@@ -1,0 +1,132 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://docspine.dev/schemas/report.schema.json",
+	"title": "AuditReport",
+	"description": "Design spec §8 output + envelope. TS mirror at src/contracts/report.ts.",
+	"type": "object",
+	"additionalProperties": false,
+	"$defs": {
+		"claim": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"kind": { "enum": ["path", "symbol", "command", "link"] },
+				"value": { "type": "string" },
+				"docId": { "type": "string", "minLength": 1 },
+				"line": { "type": "integer", "minimum": 1 },
+				"raw": { "type": "string" }
+			},
+			"required": ["kind", "value", "docId", "line", "raw"]
+		},
+		"claimFinding": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"claim": { "$ref": "#/$defs/claim" },
+				"status": { "enum": ["ok", "broken", "moved", "unverifiable"] },
+				"detail": { "type": "string" },
+				"movedTo": { "type": "string" }
+			},
+			"required": ["claim", "status"]
+		},
+		"docScore": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"brokenClaimRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+				"coveredCodeChurn": { "type": "integer", "minimum": 0 },
+				"docAgeVsCodeAge": { "type": "number" }
+			},
+			"required": ["brokenClaimRatio", "coveredCodeChurn", "docAgeVsCodeAge"]
+		},
+		"docFinding": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"docId": { "type": "string", "minLength": 1 },
+				"claimFindings": {
+					"type": "array",
+					"items": { "$ref": "#/$defs/claimFinding" }
+				},
+				"score": { "$ref": "#/$defs/docScore" },
+				"provisionalKind": {
+					"enum": [
+						"canon",
+						"adr",
+						"runbook",
+						"map",
+						"reference",
+						"history",
+						"scratch",
+						"guide"
+					]
+				},
+				"provisionalStatus": {
+					"enum": ["draft", "verified", "stale", "superseded", "archived"]
+				}
+			},
+			"required": ["docId", "claimFindings", "score"]
+		},
+		"coverageGap": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"target": { "type": "string", "minLength": 1 },
+				"targetKind": {
+					"enum": [
+						"code_root",
+						"public_api",
+						"cli_entrypoint",
+						"ci_workflow",
+						"iac_dir",
+						"migration_dir",
+						"test_suite"
+					]
+				},
+				"churn": { "type": "integer", "minimum": 0 },
+				"fanIn": { "type": "integer", "minimum": 0 }
+			},
+			"required": ["target", "targetKind", "churn", "fanIn"]
+		},
+		"contradictionCandidate": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"docIds": {
+					"type": "array",
+					"items": { "type": "string", "minLength": 1 },
+					"minItems": 2,
+					"maxItems": 2
+				},
+				"claimA": { "type": "string" },
+				"claimB": { "type": "string" },
+				"classification": {
+					"enum": ["duplicate", "complementary", "contradictory"]
+				}
+			},
+			"required": ["docIds", "claimA", "claimB", "classification"]
+		}
+	},
+	"properties": {
+		"generatedAtSha": { "type": "string", "minLength": 1 },
+		"toolVersion": { "type": "string", "minLength": 1 },
+		"analysisDepth": { "type": "string", "minLength": 1 },
+		"docFindings": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/docFinding" }
+		},
+		"gaps": { "type": "array", "items": { "$ref": "#/$defs/coverageGap" } },
+		"contradictions": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/contradictionCandidate" }
+		}
+	},
+	"required": [
+		"generatedAtSha",
+		"toolVersion",
+		"analysisDepth",
+		"docFindings",
+		"gaps",
+		"contradictions"
+	]
+}

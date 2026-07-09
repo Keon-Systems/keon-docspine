@@ -1,0 +1,114 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://docspine.dev/schemas/manifest.schema.json",
+	"title": "Manifest",
+	"description": "Design spec §5.2. docs/manifest.json — generated; TS mirror at src/contracts/manifest.ts.",
+	"type": "object",
+	"additionalProperties": false,
+	"$defs": {
+		"subsystem": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"canon": { "type": "array", "items": { "type": "string" } },
+				"runbooks": { "type": "array", "items": { "type": "string" } },
+				"adrs": { "type": "array", "items": { "type": "string" } },
+				"code_roots": { "type": "array", "items": { "type": "string" } },
+				"owner": { "type": "string", "minLength": 1 }
+			},
+			"required": ["canon", "runbooks", "adrs", "code_roots", "owner"]
+		},
+		"docEntry": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"kind": {
+					"enum": [
+						"canon",
+						"adr",
+						"runbook",
+						"map",
+						"reference",
+						"history",
+						"scratch",
+						"guide"
+					]
+				},
+				"status": {
+					"enum": ["draft", "verified", "stale", "superseded", "archived"]
+				},
+				"confidence": { "enum": ["high", "medium", "low"] },
+				"tokens_estimate": { "type": "integer", "minimum": 0 },
+				"tags": { "type": "array", "items": { "type": "string" } },
+				"covers": { "type": "array", "items": { "type": "string" } }
+			},
+			"required": [
+				"path",
+				"kind",
+				"status",
+				"confidence",
+				"tokens_estimate",
+				"tags",
+				"covers"
+			]
+		},
+		"route": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"match": { "type": "string", "minLength": 1 },
+				"load": { "type": "array", "items": { "type": "string" } },
+				"required": { "type": "boolean" }
+			},
+			"required": ["match", "load"]
+		},
+		"conflict": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"docId": { "type": "string", "minLength": 1 },
+				"claim": { "type": "string" },
+				"observed": { "type": "string" },
+				"location": { "type": "string", "minLength": 1 }
+			},
+			"required": ["docId", "claim", "observed", "location"]
+		}
+	},
+	"properties": {
+		"version": { "type": "integer", "minimum": 1 },
+		"generated_at_sha": { "type": "string", "minLength": 1 },
+		"trust_rules_digest": { "type": "string", "minLength": 1 },
+		"entrypoint": { "type": "string", "minLength": 1 },
+		"subsystems": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#/$defs/subsystem" }
+		},
+		"docs": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#/$defs/docEntry" }
+		},
+		"routes": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/route" }
+		},
+		"context_packets": {
+			"type": "object",
+			"additionalProperties": { "type": "array", "items": { "type": "string" } }
+		},
+		"stale_queue": { "type": "array", "items": { "type": "string" } },
+		"conflicts": { "type": "array", "items": { "$ref": "#/$defs/conflict" } }
+	},
+	"required": [
+		"version",
+		"generated_at_sha",
+		"trust_rules_digest",
+		"entrypoint",
+		"subsystems",
+		"docs",
+		"routes",
+		"context_packets",
+		"stale_queue",
+		"conflicts"
+	]
+}

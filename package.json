@@ -1,0 +1,27 @@
+{
+	"name": "docspine",
+	"version": "0.1.0",
+	"private": true,
+	"description": "DocSpine: a manifest-first, machine-verified documentation audit system for agent-ready repos.",
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build": "tsc --noEmit",
+		"lint": "biome check .",
+		"test": "tsx --test"
+	},
+	"license": "UNLICENSED",
+	"dependencies": {
+		"ajv": "^8.20.0",
+		"commander": "^14.0.3",
+		"gray-matter": "^4.0.3",
+		"picomatch": "^4.0.5"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.3",
+		"tsx": "^4.23.0",
+		"typescript": "^7.0.2"
+	}
+}
