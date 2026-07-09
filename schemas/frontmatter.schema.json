@@ -1,0 +1,86 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://docspine.dev/schemas/frontmatter.schema.json",
+	"title": "DocFrontmatter",
+	"description": "Design spec §5.1. YAML frontmatter required on every doc; TS mirror at src/contracts/frontmatter.ts.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"id": { "type": "string", "minLength": 1 },
+		"title": { "type": "string", "minLength": 1 },
+		"kind": {
+			"enum": [
+				"canon",
+				"adr",
+				"runbook",
+				"map",
+				"reference",
+				"history",
+				"scratch",
+				"guide"
+			]
+		},
+		"status": {
+			"enum": ["draft", "verified", "stale", "superseded", "archived"]
+		},
+		"owner": { "type": "string", "minLength": 1 },
+		"subsystem": { "type": "string", "minLength": 1 },
+		"covers": {
+			"type": "array",
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"covers_apis": {
+			"type": "array",
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"related_tests": {
+			"type": "array",
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"supersedes": { "type": ["string", "null"] },
+		"superseded_by": { "type": ["string", "null"] },
+		"audience": {
+			"type": "array",
+			"items": { "enum": ["agent", "human"] },
+			"minItems": 1
+		},
+		"confidence": { "enum": ["high", "medium", "low"] },
+		"last_verified_sha": { "type": ["string", "null"] },
+		"last_verified_at": { "type": ["string", "null"] },
+		"drift_tolerance": { "enum": ["strict", "normal", "loose"] },
+		"tags": {
+			"type": "array",
+			"items": { "type": "string" }
+		},
+		"expires": { "type": ["string", "null"] }
+	},
+	"required": [
+		"id",
+		"title",
+		"kind",
+		"status",
+		"owner",
+		"subsystem",
+		"audience",
+		"confidence",
+		"last_verified_sha",
+		"last_verified_at",
+		"drift_tolerance",
+		"tags"
+	],
+	"allOf": [
+		{
+			"$comment": "Design spec §5.1: covers is mandatory for kind=canon or kind=runbook (a canon doc that covers nothing is unverifiable and is rejected at compile).",
+			"if": {
+				"properties": { "kind": { "enum": ["canon", "runbook"] } },
+				"required": ["kind"]
+			},
+			"then": {
+				"required": ["covers"],
+				"properties": {
+					"covers": { "type": "array", "minItems": 1 }
+				}
+			}
+		}
+	]
+}

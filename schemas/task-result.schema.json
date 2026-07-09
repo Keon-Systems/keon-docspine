@@ -1,0 +1,34 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://docspine.dev/schemas/task-result.schema.json",
+	"title": "TaskResult",
+	"description": "Design spec §19.1. TS mirror at src/contracts/provider.ts. advisory is pinned to `const: true` here as the schema-level enforcement of the tier-model invariant that mirrors the TypeScript literal type `true`.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"output": {},
+		"provider": { "type": "string", "minLength": 1 },
+		"model": { "type": "string", "minLength": 1 },
+		"modelVersion": { "type": "string" },
+		"usage": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"inputTokens": { "type": "integer", "minimum": 0 },
+				"outputTokens": { "type": "integer", "minimum": 0 },
+				"costUsd": { "type": "number", "minimum": 0 }
+			},
+			"required": ["inputTokens", "outputTokens"]
+		},
+		"schemaRepairAttempts": { "type": "integer", "minimum": 0 },
+		"advisory": { "const": true }
+	},
+	"required": [
+		"output",
+		"provider",
+		"model",
+		"usage",
+		"schemaRepairAttempts",
+		"advisory"
+	]
+}

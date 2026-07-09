@@ -1,0 +1,93 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://docspine.dev/schemas/evidence-packet.schema.json",
+	"title": "EvidencePacket",
+	"description": "Design spec §19.1. TS mirror at src/contracts/provider.ts. References frontmatter.schema.json for EvidencePacketDoc.frontmatter — validating consumers must register schemas/frontmatter.schema.json in the same ajv instance.",
+	"type": "object",
+	"additionalProperties": false,
+	"$defs": {
+		"claim": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"kind": { "enum": ["path", "symbol", "command", "link"] },
+				"value": { "type": "string" },
+				"docId": { "type": "string", "minLength": 1 },
+				"line": { "type": "integer", "minimum": 1 },
+				"raw": { "type": "string" }
+			},
+			"required": ["kind", "value", "docId", "line", "raw"]
+		},
+		"evidencePacketDoc": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"docId": { "type": "string", "minLength": 1 },
+				"path": { "type": "string", "minLength": 1 },
+				"frontmatter": {
+					"anyOf": [
+						{ "$ref": "https://docspine.dev/schemas/frontmatter.schema.json" },
+						{ "type": "null" }
+					]
+				},
+				"body": { "type": "string" }
+			},
+			"required": ["docId", "path", "frontmatter"]
+		},
+		"symbolSlice": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"symbol": { "type": "string", "minLength": 1 },
+				"path": { "type": "string", "minLength": 1 },
+				"line": { "type": "integer", "minimum": 1 },
+				"snippet": { "type": "string" }
+			},
+			"required": ["symbol", "path", "line"]
+		},
+		"diffHunk": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"hunk": { "type": "string" },
+				"summary": { "type": "string" }
+			},
+			"required": ["path"]
+		}
+	},
+	"properties": {
+		"task": {
+			"enum": [
+				"classify_docs",
+				"detect_duplicates",
+				"detect_contradictions",
+				"summarize_stale_docs",
+				"cleanup_recommendations",
+				"draft_missing_docs",
+				"doc_rewrite_draft",
+				"context_packet_generation",
+				"pr_review_comments"
+			]
+		},
+		"docs": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/evidencePacketDoc" }
+		},
+		"claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+		"symbolSlices": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/symbolSlice" }
+		},
+		"diffHunks": { "type": "array", "items": { "$ref": "#/$defs/diffHunk" } },
+		"redacted": { "type": "boolean" }
+	},
+	"required": [
+		"task",
+		"docs",
+		"claims",
+		"symbolSlices",
+		"diffHunks",
+		"redacted"
+	]
+}
