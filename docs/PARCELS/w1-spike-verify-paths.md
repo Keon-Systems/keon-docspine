@@ -68,7 +68,7 @@ Path checker behavior: exists → ok; missing but `git log --follow --diff-filte
 - Contracts survived contact with reality — OR amendments were filed. Both are success; silent workarounds are failure.
 
 ## Verification
-- `npx tsc --noEmit && npx biome check . && npx tsx --test tests/`
+- `npx tsc --noEmit && npx biome check . && npx tsx --test` (bare — no `tests/` path arg; see STRATEGY §2 amendment)
 - `pwsh fixtures/messy-repo/setup-fixture-git.ps1 -Target $env:TEMP\ds-spike && npx tsx scripts/spike-verify.ts $env:TEMP\ds-spike`
 - Success: green tests; report validates; summary shows expected broken/moved counts
 

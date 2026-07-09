@@ -39,7 +39,7 @@ C:\Repos\docspine.w1-contracts-core
 - NO implementations. No extractors, checkers, pipeline, git helpers, provider adapters, or CLI. Types, schemas, fixtures, and tests ONLY.
 - Do not create `src/registry.ts` (the spike owns it).
 - Do not create `fixtures/messy-repo/**` (w1-fixture-repo owns it).
-- Do not add dependencies beyond the locked set: commander, gray-matter, picomatch, ajv (+ dev: typescript, tsx, @biomejs/biome). Any other dep = stop and request a spec amendment.
+- Do not add dependencies beyond the locked set: commander, gray-matter, picomatch, ajv (+ dev: typescript, tsx, @biomejs/biome, @types/node). Any other dep = stop and request a spec amendment.
 - Do not add runtime validation libraries (zod, io-ts). Ajv against published schemas is the validation strategy.
 
 ## Out of Scope
@@ -98,7 +98,7 @@ JSDoc rule: every field where two reasonable agents could disagree gets one cano
 - AGENTS.md exists with load order + trust rules digest per design spec §7.
 
 ## Verification
-- `npm ci && npx tsc --noEmit && npx biome check . && npx tsx --test tests/`
+- `npm ci && npx tsc --noEmit && npx biome check . && npx tsx --test` (bare — no `tests/` path arg; see STRATEGY §2 amendment)
 - Success: all green, zero skipped.
 
 ## Collision Risk

@@ -27,11 +27,11 @@ This is a new repo. Constraints below are **decided and locked**, not discovered
 | Worktrees | `C:\Repos\docspine.<parcel-id>` | Skill-standard pattern |
 | Language/runtime | TypeScript, Node ≥ 22 | Coordinator's standard toolchain; `node:` builtins preferred |
 | Package layout | Single package, `src/` modular. No monorepo/workspaces in v1 | Workspaces are premature; split when the MCP server or GitHub App lands |
-| Test runner | `node --test` via `npx tsx --test` | Matches established precedent; zero test-framework deps |
+| Test runner | `node --test` via `npx tsx --test` (bare, no path argument — passing an explicit path like `tests/` makes Node treat it as a script entrypoint instead of triggering recursive test discovery) | Matches established precedent; zero test-framework deps |
 | Module system | ESM only | It's 2026 |
 | Lint/format | `biome` (single tool, single config) | One dep instead of eslint+prettier constellation |
 | CLI framework | `commander` | Boring, stable, sufficient |
-| Dependency policy | Minimal, pinned: `commander`, `gray-matter` (frontmatter), `picomatch` (globs), `ajv` (JSON-schema validation). Everything else is `node:` builtins. **Adding any other dependency requires a spec amendment.** | Deps are attack surface and Windows-build risk |
+| Dependency policy | Minimal, pinned: `commander`, `gray-matter` (frontmatter), `picomatch` (globs), `ajv` (JSON-schema validation), plus `@types/node` (dev-only, types-only — required for `node:` builtin/`node:test`/`import.meta.url` typings under the locked ESM+strict tsconfig). Everything else is `node:` builtins. **Adding any other dependency requires a spec amendment.** | Deps are attack surface and Windows-build risk; `@types/node` is exempted from the runtime-risk rationale because it ships zero runtime code |
 | Symbol indexing (v1) | TypeScript/JavaScript only, via the TypeScript compiler API. The `SymbolIndex` contract is language-agnostic; tree-sitter backends are post-v1 | Native tree-sitter bindings are a Windows-build tarpit; don't put them on the critical path |
 | Commit messages | `git commit -F <msgfile>`, never inline `-m` | Coordinator tooling convention (avoids shell-quoting hazards) |
 | Agent instructions | `AGENTS.md` written as part of contracts parcel; DocSpine dogfoods its own entrypoint format from day one | — |
