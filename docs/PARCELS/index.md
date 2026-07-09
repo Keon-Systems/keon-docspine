@@ -8,9 +8,9 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 
 | Parcel | Wave | Status | Worktree | Branch | PR | Assignee |
 |--------|------|--------|----------|--------|-----|----------|
-| w1-contracts-core | W1 | queued | C:\Repos\docspine.w1-contracts-core | feat/w1-contracts-core | — | — |
-| w1-fixture-repo | W1 | queued | C:\Repos\docspine.w1-fixture-repo | feat/w1-fixture-repo | — | — |
-| w1-spike-verify-paths | W1 | blocked (contracts, fixture) | C:\Repos\docspine.w1-spike-verify-paths | feat/w1-spike-verify-paths | — | coordinator or single agent |
+| w1-contracts-core | W1 | merged | n/a | feat/w1-contracts-core | e13e6be..ae118fc (local) | Claude |
+| w1-fixture-repo | W1 | merged | n/a | feat/w1-fixture-repo | be78028 (local) | Claude |
+| w1-spike-verify-paths | W1 | dispatched | C:\Repos\docspine.w1-spike-verify-paths | feat/w1-spike-verify-paths | — | coordinator or single agent |
 | w1-frontmatter-validate | W1 | blocked (spike) | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
 | w1-extract-symbols | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
 | w1-extract-commands | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
@@ -90,7 +90,7 @@ W2 EXIT ─► w3-* (parallel except w3-dogfood-docs, which lands last)
 
 ## Wave Status
 
-W1 (contracts + primitives): 0/14 merged · exit criteria: pending
+W1 (contracts + primitives): 2/14 merged · exit criteria: pending (spike dispatched)
 W2 (assembly + provider layer): 0/8 merged · blocked by W1 exit
 W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 
@@ -98,7 +98,9 @@ W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 
 | Amendment | Contract | Affected Parcels | Status | Migration Note |
 |-----------|----------|------------------|--------|----------------|
-| — | — | — | — | — |
+| ca-001 | STRATEGY §2 dependency policy | all W1/W2 parcels using `tsc`/`tsx --test` | merged | Added `@types/node` (dev-only) to the locked dependency set + `"types": ["node"]` in tsconfig.json. Surfaced by w1-contracts-core's stop-and-report; types-only, no runtime footprint. |
+| ca-002 | STRATEGY §2 verification convention | all W1/W2 parcel specs citing `npx tsx --test tests/` | merged (w1-contracts-core.md, w1-spike-verify-paths.md updated; other specs not yet written) | Canonical command is bare `npx tsx --test` (no path arg) — an explicit path makes Node's test runner treat it as a script entrypoint, not a discovery root. Verification also requires Node ≥22 active (`nvm use 22`); Node 20's test runner does not discover `.ts` test files by default. |
+| ca-003 | biome.json scope | w1-contracts-core (biome.json), interacts with w1-fixture-repo's tree | merged | `files.includes` excludes `fixtures/messy-repo` — that tree is inert fixture data with intentionally non-conforming formatting/lint characteristics, not lint-worthy source. |
 
 ## Open Decisions Needed
 
