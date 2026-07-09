@@ -76,7 +76,7 @@ Low during W1 (sole owner of fixtures/). Becomes a HIGH-sensitivity shared asset
 
 ## PR Notes
 - What changed: fixture repo + oracle + setup/verify scripts
-- Why: shared test bed for all W1/W2 parcels and the future wedge demo asset (STRATEGY-docspine.md §4.2)
+- Why: shared test bed for all W1/W2 parcels and the future wedge demo asset (docs/STRATEGY-docspine.md §4.2)
 - Risk: an ambiguous oracle row silently weakens every downstream test — review EXPECTED-FINDINGS.md hardest
 - Verification: run both scripts; audit the defect inventory against this spec's table
 

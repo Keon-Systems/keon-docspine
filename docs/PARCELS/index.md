@@ -1,7 +1,7 @@
 # Parcel Index — DocSpine v1
 
 Coordination board. Coordinator (Clint) owns all merges, contract amendments, and dispatch order.
-Strategy: `STRATEGY-docspine.md`. Design source: `docs/design/llm-native-docs-system.md`.
+Strategy: `docs/STRATEGY-docspine.md`. Design source: `docs/design/llm-native-docs-system.md`.
 Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Worktrees: `C:\Repos\docspine.<parcel-id>`
 
 ## Status

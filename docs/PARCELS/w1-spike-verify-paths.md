@@ -41,7 +41,7 @@ Report determinism hardening (stable hashing — w1-report-writer), rename-detec
 ## Existing Patterns To Follow
 - src/contracts/plugins.ts — implement Extractor/Checker exactly as merged; the spike consumes contracts, it does not reinterpret them
 - fixtures/messy-repo/EXPECTED-FINDINGS.md — the e2e test's oracle rows for kind=path
-- STRATEGY-docspine.md §6.5 — where determinism is cheap now (sort findings by docId, then line), do it; where it needs the report-writer, leave a TODO referencing w1-report-writer
+- docs/STRATEGY-docspine.md §6.5 — where determinism is cheap now (sort findings by docId, then line), do it; where it needs the report-writer, leave a TODO referencing w1-report-writer
 
 ## Contract
 Pipeline shape (consumes, does not define):

@@ -46,7 +46,7 @@ C:\Repos\docspine.w1-contracts-core
 Working verification of anything. Reviewers should expect zero behavior — only shapes, fixtures proving the shapes are satisfiable, and tests proving fixtures match schemas. Report/manifest determinism logic (stable ordering, hashing) is w1-report-writer / w2-manifest-compile.
 
 ## Existing Patterns To Follow
-- STRATEGY-docspine.md §2 (locked toolchain: ESM, Node ≥22, npx tsx --test, biome)
+- docs/STRATEGY-docspine.md §2 (locked toolchain: ESM, Node ≥22, npx tsx --test, biome)
 - Design spec §5 (frontmatter + manifest schemas), §8 (report), §19.1 (provider interfaces) — transcribe faithfully; where the spec is prose, the JSDoc you write becomes the canonical interpretation
 - Test layout convention: flat tests/ dir, node:test runner, no test framework dependencies
 
@@ -106,7 +106,7 @@ High by nature (everything downstream depends on it) but zero concurrent collisi
 
 ## PR Notes
 - What changed: contracts, schemas, fixtures, toolchain skeleton, AGENTS.md
-- Why: PDD Phase 1 — nothing parallel forks until this merges (STRATEGY-docspine.md §5 W1)
+- Why: PDD Phase 1 — nothing parallel forks until this merges (docs/STRATEGY-docspine.md §5 W1)
 - Risk: ambiguity in any field here multiplies across every downstream parcel; JSDoc completeness is the review focus
 - Verification: run the three commands above; spot-check JSDoc on covers/line/docId
 
