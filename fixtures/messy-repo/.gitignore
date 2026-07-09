@@ -1,0 +1,9 @@
+# This fixture ships its own throwaway git history via setup-fixture-git.ps1
+# / setup-fixture-git.sh. Those scripts copy this tree to a --target/-Target
+# directory (normally under the OS temp dir) and seed git history THERE —
+# they must never be pointed at this checked-in tree directly.
+#
+# This entry is defensive only: if a nested repo is ever initialized here by
+# mistake, its .git/ must never be staged into the parent docspine repo.
+.git/
+node_modules/

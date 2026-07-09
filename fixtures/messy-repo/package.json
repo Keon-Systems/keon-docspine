@@ -1,0 +1,11 @@
+{
+  "name": "messy-repo-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Inert fixture package.json for the DocSpine messy-repo test bed. This file is fixture DATA — it is never npm-installed or executed. Its only job is to define a closed set of npm scripts so command claims in the fixture docs have something real to check against.",
+  "scripts": {
+    "build": "echo '[fixture] build'",
+    "test": "echo '[fixture] test'",
+    "lint": "echo '[fixture] lint'"
+  }
+}
