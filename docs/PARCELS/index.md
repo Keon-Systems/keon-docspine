@@ -1,0 +1,120 @@
+# Parcel Index — DocSpine v1
+
+Coordination board. Coordinator (Clint) owns all merges, contract amendments, and dispatch order.
+Strategy: `STRATEGY-docspine.md`. Design source: `docs/design/llm-native-docs-system.md`.
+Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Worktrees: `C:\Repos\docspine.<parcel-id>`
+
+## Status
+
+| Parcel | Wave | Status | Worktree | Branch | PR | Assignee |
+|--------|------|--------|----------|--------|-----|----------|
+| w1-contracts-core | W1 | queued | C:\Repos\docspine.w1-contracts-core | feat/w1-contracts-core | — | — |
+| w1-fixture-repo | W1 | queued | C:\Repos\docspine.w1-fixture-repo | feat/w1-fixture-repo | — | — |
+| w1-spike-verify-paths | W1 | blocked (contracts, fixture) | C:\Repos\docspine.w1-spike-verify-paths | feat/w1-spike-verify-paths | — | coordinator or single agent |
+| w1-frontmatter-validate | W1 | blocked (spike) | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
+| w1-extract-symbols | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
+| w1-extract-commands | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
+| w1-extract-links | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
+| w1-check-symbols | W1 | blocked (spike, symbol-index-ts) | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
+| w1-check-commands | W1 | blocked (spike) | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
+| w1-check-links | W1 | blocked (spike) | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
+| w1-symbol-index-ts | W1 | blocked (spike) | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
+| w1-git-plumbing | W1 | blocked (contracts) | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
+| w1-report-writer | W1 | blocked (spike) | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
+| w1-registry-wiring | W1 | blocked (all W1 extractors/checkers) | C:\Repos\docspine.w1-registry-wiring | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
+| w2-pipeline-audit | W2 | queued (W1 exit) | — | feat/w2-pipeline-audit | — | — |
+| w2-drift-engine | W2 | queued (W1 exit) | — | feat/w2-drift-engine | — | — |
+| w2-manifest-compile | W2 | queued (W1 exit) | — | feat/w2-manifest-compile | — | — |
+| w2-cli-wiring | W2 | queued (W2 assembly) | — | feat/w2-cli-wiring | — | serialized |
+| w2-provider-router | W2 | queued (W1 exit) | — | feat/w2-provider-router | — | — |
+| w2-adapter-openai-compat | W2 | queued (provider-router) | — | feat/w2-adapter-openai-compat | — | — |
+| w2-schema-repair | W2 | queued (provider-router) | — | feat/w2-schema-repair | — | — |
+| w2-lexical-similarity | W2 | queued (W1 exit) | — | feat/w2-lexical-similarity | — | — |
+| w3-cache-packet-hash | W3 | queued (W2 exit) | — | feat/w3-cache-packet-hash | — | — |
+| w3-budgets | W3 | queued (W2 exit) | — | feat/w3-budgets | — | — |
+| w3-audit-log | W3 | queued (W2 exit) | — | feat/w3-audit-log | — | — |
+| w3-health-checks | W3 | queued (W2 exit) | — | feat/w3-health-checks | — | — |
+| w3-config-validation | W3 | queued (W2 exit) | — | feat/w3-config-validation | — | — |
+| w3-dogfood-docs | W3 | queued (W2 exit) | — | feat/w3-dogfood-docs | — | coordinator-adjacent |
+
+Status legend: queued · blocked (deps) · dispatched · in-review · merged · rejected
+
+## W1 Parcel Summaries (specs at `docs/PARCELS/<parcel-id>.md`)
+
+- **w1-contracts-core** — THE contracts PR. TS types + published JSON schemas for: doc frontmatter, manifest, audit report, claim record, `Extractor`/`Checker` plugin interfaces, `EvidencePacket`, `TaskRequest`/`TaskResult`, `CapabilitySet`, normalized error taxonomy. JSDoc on every ambiguous field. Fixture objects satisfying every schema, with ajv contract-satisfaction tests. Also writes `AGENTS.md` skeleton. No implementations, no UI, no CLI.
+- **w1-fixture-repo** — `fixtures/messy-repo/`: a small fake project with intentional doc rot — broken path refs, stale symbol refs, a dead command, duplicated docs, a superseded ADR without a stub, an undocumented `src/` subsystem, one doc with valid frontmatter and one without. README documents every intentional defect and its expected finding (this doubles as the test oracle). Parallel-safe with contracts.
+- **w1-spike-verify-paths** — Thin vertical spike. Pipeline skeleton: walk docs → parse frontmatter (minimal) → run registered extractors → run checkers → emit schema-valid report. Wires ONLY the path extractor + path checker (existence + `git log --follow` rename detection). Proves `Extractor`/`Checker`/report contracts end-to-end against the fixture repo. If contracts are wrong, we find out HERE, before parallel dispatch. Delivers `src/pipeline/`, `src/extractors/paths.ts`, `src/checkers/paths.ts`, provisional `src/registry.ts`.
+- **w1-frontmatter-validate** — Full frontmatter parser/validator (gray-matter + ajv against the published schema); machine-field protection markers; actionable error output. Replaces the spike's minimal parse.
+- **w1-extract-symbols / w1-extract-commands / w1-extract-links** — One pure extractor each, one file each, plugin-shaped. Backtick-fenced identifier extraction; fenced shell-block command extraction; markdown link/anchor extraction. No registry edits (see w1-registry-wiring).
+- **w1-check-symbols / w1-check-commands / w1-check-links** — One pure checker each. Symbol existence against `SymbolIndex`; command allowlist smoke-check (package-script existence, `--help` policy — NEVER arbitrary execution); internal link/anchor resolution.
+- **w1-symbol-index-ts** — `SymbolIndex` implementation for TS/JS via TypeScript compiler API. Language-agnostic contract, TS-only backend (locked in strategy §2).
+- **w1-git-plumbing** — `diffSinceSha`, rename-follow helpers, material/cosmetic change classifier primitives. Pure wrappers over `git` CLI with typed output. Depends only on contracts.
+- **w1-report-writer** — Deterministic report assembly: stable ordering, content hashing, envelope timestamps (strategy §6.5).
+- **w1-registry-wiring** — SERIALIZED. Registers all merged extractors/checkers in `src/registry.ts`, replacing the spike's provisional registry. Last W1 parcel; single owner; trivial by design because every plugin lives in its own file.
+
+## Dependency Graph
+
+```
+w1-contracts-core ─┬─► w1-spike-verify-paths ─┬─► w1-frontmatter-validate
+w1-fixture-repo  ──┘                          ├─► w1-extract-symbols
+                                              ├─► w1-extract-commands
+                                              ├─► w1-extract-links
+                                              ├─► w1-symbol-index-ts ─► w1-check-symbols
+                                              ├─► w1-check-commands
+                                              ├─► w1-check-links
+                                              └─► w1-report-writer
+w1-contracts-core ───► w1-git-plumbing        (parallel with spike; no pipeline dependency)
+
+[all W1 extractors + checkers merged] ─► w1-registry-wiring ─► W1 EXIT
+
+W1 EXIT ─┬─► w2-pipeline-audit ──┬─► w2-cli-wiring (serialized)
+         ├─► w2-drift-engine ────┤
+         ├─► w2-manifest-compile ┤
+         ├─► w2-provider-router ─┬─► w2-adapter-openai-compat
+         │                       └─► w2-schema-repair
+         └─► w2-lexical-similarity
+
+W2 EXIT ─► w3-* (parallel except w3-dogfood-docs, which lands last)
+```
+
+## Collision-Risk Files
+
+| File | Owning parcels | Handling |
+|------|----------------|----------|
+| src/contracts/*.ts, schemas/*.json | w1-contracts-core only; amendments via Contract Amendment process | Frozen after merge |
+| src/registry.ts | w1-spike-verify-paths (creates, provisional), w1-registry-wiring (finalizes) | Serialized; no other parcel touches it |
+| package.json / lockfile | w1-contracts-core (initial deps); any later dep = spec amendment | Serialized |
+| fixtures/messy-repo/** | w1-fixture-repo (creates); later parcels READ ONLY | Additions to fixtures require coordinator sign-off (it's the shared oracle) |
+| src/pipeline/** | w1-spike-verify-paths (creates), w2-pipeline-audit (extends) | Sequenced across waves |
+| src/cli/** | w2-cli-wiring only | Serialized |
+
+## Wave Status
+
+W1 (contracts + primitives): 0/14 merged · exit criteria: pending
+W2 (assembly + provider layer): 0/8 merged · blocked by W1 exit
+W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
+
+## Contract Amendments
+
+| Amendment | Contract | Affected Parcels | Status | Migration Note |
+|-----------|----------|------------------|--------|----------------|
+| — | — | — | — | — |
+
+## Open Decisions Needed
+
+None. Resolved by coordinator 2026-07-09:
+
+1. **Repo home: RESOLVED — personal/separate-entity repo.** No company org, no company hardware/accounts, no company secrets or company-specific docs, no employer time. Clean ownership boundary from commit zero; licensing to third parties remains possible later. (Work-for-hire ambiguity is expensive; a repo boundary is cheap.)
+2. **Fixture-repo language mix: RESOLVED — keep Python defect #12.** Status stays within the closed FindingStatus union (`unverifiable`); `unverifiable_symbol_language` is a detail substring, never a fifth status.
+
+## Dispatch Order
+
+0. **Repo creation (coordinator, done outside parcels):** create personal/separate-entity repo → bare-init commit (README only) on `main`. DONE 2026-07-09.
+1. **Batch 0 (parallel):** w1-contracts-core, w1-fixture-repo
+2. **Merge sequencing within Batch 0:** merge contracts FIRST if possible; reconcile fixture EXPECTED-FINDINGS vocabulary against merged contracts (especially defect #12's closed-union status) before merging fixture.
+3. **Batch 1 (single, sequenced):** w1-spike-verify-paths — coordinator reviews contracts against reality here; amendments are cheapest at this moment
+4. **Batch 2 (parallel, wide):** w1-frontmatter-validate, w1-extract-symbols, w1-extract-commands, w1-extract-links, w1-check-commands, w1-check-links, w1-symbol-index-ts, w1-report-writer, w1-git-plumbing — **specs authored only after the spike merges cleanly or files its amendments**
+5. **Batch 3 (parallel, small):** w1-check-symbols (needs symbol-index-ts)
+6. **Batch 4 (single, serialized):** w1-registry-wiring → verify W1 exit criteria → gate W2
+
+*Contracts before parallel fork. One parcel, one branch, one worktree. This is the way.*
