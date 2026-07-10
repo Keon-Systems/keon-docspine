@@ -10,17 +10,17 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 |--------|------|--------|----------|--------|-----|----------|
 | w1-contracts-core | W1 | merged | n/a | feat/w1-contracts-core | e13e6be..ae118fc (local) | Claude |
 | w1-fixture-repo | W1 | merged | n/a | feat/w1-fixture-repo | be78028 (local) | Claude |
-| w1-spike-verify-paths | W1 | dispatched | C:\Repos\docspine.w1-spike-verify-paths | feat/w1-spike-verify-paths | — | coordinator or single agent |
-| w1-frontmatter-validate | W1 | blocked (spike) | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
-| w1-extract-symbols | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
-| w1-extract-commands | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
-| w1-extract-links | W1 | blocked (spike) | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
-| w1-check-symbols | W1 | blocked (spike, symbol-index-ts) | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
-| w1-check-commands | W1 | blocked (spike) | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
-| w1-check-links | W1 | blocked (spike) | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
-| w1-symbol-index-ts | W1 | blocked (spike) | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
-| w1-git-plumbing | W1 | blocked (contracts) | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
-| w1-report-writer | W1 | blocked (spike) | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
+| w1-spike-verify-paths | W1 | merged | n/a | feat/w1-spike-verify-paths | 86c105d (local) | Claude |
+| w1-frontmatter-validate | W1 | spec-pending | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
+| w1-extract-symbols | W1 | spec-pending | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
+| w1-extract-commands | W1 | spec-pending | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
+| w1-extract-links | W1 | spec-pending | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
+| w1-check-symbols | W1 | blocked (symbol-index-ts) | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
+| w1-check-commands | W1 | spec-pending | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
+| w1-check-links | W1 | spec-pending | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
+| w1-symbol-index-ts | W1 | spec-pending | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
+| w1-git-plumbing | W1 | spec-pending | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
+| w1-report-writer | W1 | spec-pending | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
 | w1-registry-wiring | W1 | blocked (all W1 extractors/checkers) | C:\Repos\docspine.w1-registry-wiring | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
 | w2-pipeline-audit | W2 | queued (W1 exit) | — | feat/w2-pipeline-audit | — | — |
 | w2-drift-engine | W2 | queued (W1 exit) | — | feat/w2-drift-engine | — | — |
@@ -90,7 +90,7 @@ W2 EXIT ─► w3-* (parallel except w3-dogfood-docs, which lands last)
 
 ## Wave Status
 
-W1 (contracts + primitives): 2/14 merged · exit criteria: pending (spike dispatched)
+W1 (contracts + primitives): 3/14 merged · exit criteria: pending (Batch 2 specs being authored)
 W2 (assembly + provider layer): 0/8 merged · blocked by W1 exit
 W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 
@@ -101,21 +101,26 @@ W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 | ca-001 | STRATEGY §2 dependency policy | all W1/W2 parcels using `tsc`/`tsx --test` | merged | Added `@types/node` (dev-only) to the locked dependency set + `"types": ["node"]` in tsconfig.json. Surfaced by w1-contracts-core's stop-and-report; types-only, no runtime footprint. |
 | ca-002 | STRATEGY §2 verification convention | all W1/W2 parcel specs citing `npx tsx --test tests/` | merged (w1-contracts-core.md, w1-spike-verify-paths.md updated; other specs not yet written) | Canonical command is bare `npx tsx --test` (no path arg) — an explicit path makes Node's test runner treat it as a script entrypoint, not a discovery root. Verification also requires Node ≥22 active (`nvm use 22`); Node 20's test runner does not discover `.ts` test files by default. |
 | ca-003 | biome.json scope | w1-contracts-core (biome.json), interacts with w1-fixture-repo's tree | merged | `files.includes` excludes `fixtures/messy-repo` — that tree is inert fixture data with intentionally non-conforming formatting/lint characteristics, not lint-worthy source. |
+| ca-004 | Extractor line-numbering convention (process note, not a type change) | w1-extract-symbols, w1-extract-commands, w1-extract-links (Batch 2, specs not yet written at time of this note) | merged (documented, no contract edit) | `Claim.line` must be the full-source-file (post-frontmatter) line number, but `Extractor.extract(doc: ParsedDoc)` only ever sees frontmatter-stripped `doc.body`. w1-spike-verify-paths's working convention (kept, not changed): extractors compute `Claim.line` relative to `doc.body`'s own first line (1-indexed); the pipeline (`run-verify.ts`) adds the frontmatter line offset before a claim leaves the pipeline. Every Batch-2 extractor spec must state this explicitly so authors don't re-derive or misalign it. |
 
 ## Open Decisions Needed
 
-None. Resolved by coordinator 2026-07-09:
+None blocking. Resolved by coordinator 2026-07-09:
 
 1. **Repo home: RESOLVED — personal/separate-entity repo.** No company org, no company hardware/accounts, no company secrets or company-specific docs, no employer time. Clean ownership boundary from commit zero; licensing to third parties remains possible later. (Work-for-hire ambiguity is expensive; a repo boundary is cheap.)
 2. **Fixture-repo language mix: RESOLVED — keep Python defect #12.** Status stays within the closed FindingStatus union (`unverifiable`); `unverifiable_symbol_language` is a detail substring, never a fifth status.
+
+Deferred, non-blocking (from w1-spike-verify-paths review, 2026-07-10):
+
+3. **Doc-discovery scope for `walkDocs`.** Currently walks all `*.md` under the repo root unconditionally (per design spec §8 Step 1's literal wording), which means a doc's own meta-content (e.g. `fixtures/messy-repo/EXPECTED-FINDINGS.md`, which itself contains backtick-fenced paths describing the fixture's intentional defects) gets walked and claim-extracted like any other doc — inflating/duplicating counts against the "real" canon docs. Does not block or fail any current test (per-doc assertions, not corpus-wide counts) but will matter more at the W3 dogfood-on-real-repo gate (`docs/PARCELS/*.md`, `STRATEGY-docspine.md` reference many real paths in prose). Options for later: restrict to `docs/**`, restrict to frontmatter-bearing files only, or accept the noise as correct (the tool finding real path claims in real prose, wherever it lives). Revisit at W2 manifest-compile or W3 dogfood, not now.
 
 ## Dispatch Order
 
 0. **Repo creation (coordinator, done outside parcels):** create personal/separate-entity repo → bare-init commit (README only) on `main`. DONE 2026-07-09.
 1. **Batch 0 (parallel):** w1-contracts-core, w1-fixture-repo
 2. **Merge sequencing within Batch 0:** merge contracts FIRST if possible; reconcile fixture EXPECTED-FINDINGS vocabulary against merged contracts (especially defect #12's closed-union status) before merging fixture.
-3. **Batch 1 (single, sequenced):** w1-spike-verify-paths — coordinator reviews contracts against reality here; amendments are cheapest at this moment
-4. **Batch 2 (parallel, wide):** w1-frontmatter-validate, w1-extract-symbols, w1-extract-commands, w1-extract-links, w1-check-commands, w1-check-links, w1-symbol-index-ts, w1-report-writer, w1-git-plumbing — **specs authored only after the spike merges cleanly or files its amendments**
+3. **Batch 1 (single, sequenced):** w1-spike-verify-paths — DONE, merged 2026-07-10. Contracts survived contact with reality with zero amendments required (see ca-004 for the one process note baked into Batch 2 specs below).
+4. **Batch 2 (parallel, wide):** w1-frontmatter-validate, w1-extract-symbols, w1-extract-commands, w1-extract-links, w1-check-commands, w1-check-links, w1-symbol-index-ts, w1-report-writer, w1-git-plumbing — specs being authored now that the spike has merged clean
 5. **Batch 3 (parallel, small):** w1-check-symbols (needs symbol-index-ts)
 6. **Batch 4 (single, serialized):** w1-registry-wiring → verify W1 exit criteria → gate W2
 
