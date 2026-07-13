@@ -6,6 +6,9 @@ status: verified
 subsystem: meta
 audience: [agent, human]
 confidence: high
+last_verified_sha: null
+last_verified_at: null
+drift_tolerance: normal
 tags: [fixture, frontmatter]
 ---
 
