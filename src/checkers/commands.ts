@@ -24,8 +24,12 @@ import type {
 	RepoContext,
 } from "../contracts/index.js";
 
-const NPM_RUN_RE = /^npm run (\S+)/;
-const NPM_TEST_RE = /^npm test$/;
+// Leading whitespace tolerated: the sibling extractor (w1-extract-commands)
+// derives Claim.value from the *trimmed* line but preserves the *untrimmed*
+// line in Claim.raw, so an indented command inside a fenced block (e.g.
+// nested under a markdown list item) must still match here.
+const NPM_RUN_RE = /^\s*npm run (\S+)/;
+const NPM_TEST_RE = /^\s*npm test\s*$/;
 
 /**
  * Reads and parses `<root>/package.json`'s `scripts` object. Returns `null`
