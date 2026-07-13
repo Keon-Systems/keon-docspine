@@ -16,27 +16,7 @@
  * wiring/dedup is a future parcel's job, not this one's.
  */
 import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
-
-/**
- * The narrow surface of `picomatch` this file calls. `picomatch` ships no
- * bundled type declarations and `@types/picomatch` is not an existing
- * devDependency here (adding one would mean touching `package.json`,
- * outside this parcel's Allowed Files), so it's loaded via
- * `createRequire` + an explicit local type instead of a typed `import`
- * (which would otherwise hit TS7016 "implicitly has an 'any' type").
- */
-interface PicomatchStatic {
-	isMatch(
-		str: string,
-		patterns: string | string[],
-		options?: Record<string, unknown>,
-	): boolean;
-}
-
-const picomatch = createRequire(import.meta.url)(
-	"picomatch",
-) as PicomatchStatic;
+import picomatch from "picomatch";
 
 /** One file's status in a diff between two refs. */
 export interface DiffEntry {
