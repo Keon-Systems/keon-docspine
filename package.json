@@ -17,13 +17,13 @@
 		"ajv": "^8.20.0",
 		"commander": "^14.0.3",
 		"gray-matter": "^4.0.3",
-		"picomatch": "^4.0.5"
+		"picomatch": "^4.0.5",
+		"typescript": "^5.9.3"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
 		"@types/node": "^22.20.1",
 		"@types/picomatch": "^4.0.3",
-		"tsx": "^4.23.0",
-		"typescript": "^7.0.2"
+		"tsx": "^4.23.0"
 	}
 }
