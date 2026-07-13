@@ -11,16 +11,16 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 | w1-contracts-core | W1 | merged | n/a | feat/w1-contracts-core | e13e6be..ae118fc (local) | Claude |
 | w1-fixture-repo | W1 | merged | n/a | feat/w1-fixture-repo | be78028 (local) | Claude |
 | w1-spike-verify-paths | W1 | merged | n/a | feat/w1-spike-verify-paths | 86c105d (local) | Claude |
-| w1-frontmatter-validate | W1 | spec-pending | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
-| w1-extract-symbols | W1 | spec-pending | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
-| w1-extract-commands | W1 | spec-pending | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
-| w1-extract-links | W1 | spec-pending | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
+| w1-frontmatter-validate | W1 | dispatched | C:\Repos\docspine.w1-frontmatter-validate | feat/w1-frontmatter-validate | — | — |
+| w1-extract-symbols | W1 | dispatched | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
+| w1-extract-commands | W1 | dispatched | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
+| w1-extract-links | W1 | dispatched | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
 | w1-check-symbols | W1 | blocked (symbol-index-ts) | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
-| w1-check-commands | W1 | spec-pending | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
-| w1-check-links | W1 | spec-pending | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
-| w1-symbol-index-ts | W1 | spec-pending | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
-| w1-git-plumbing | W1 | spec-pending | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
-| w1-report-writer | W1 | spec-pending | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
+| w1-check-commands | W1 | dispatched | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
+| w1-check-links | W1 | dispatched | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
+| w1-symbol-index-ts | W1 | dispatched | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
+| w1-git-plumbing | W1 | dispatched | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
+| w1-report-writer | W1 | dispatched | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
 | w1-registry-wiring | W1 | blocked (all W1 extractors/checkers) | C:\Repos\docspine.w1-registry-wiring | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
 | w2-pipeline-audit | W2 | queued (W1 exit) | — | feat/w2-pipeline-audit | — | — |
 | w2-drift-engine | W2 | queued (W1 exit) | — | feat/w2-drift-engine | — | — |
