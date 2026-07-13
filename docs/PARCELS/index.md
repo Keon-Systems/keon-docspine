@@ -18,7 +18,7 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 | w1-check-symbols | W1 | blocked (symbol-index-ts) | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
 | w1-check-commands | W1 | dispatched | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
 | w1-check-links | W1 | dispatched | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
-| w1-symbol-index-ts | W1 | dispatched | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
+| w1-symbol-index-ts | W1 | re-dispatched (ca-005 fix) | C:\Repos\docspine.w1-symbol-index-ts | feat/w1-symbol-index-ts | — | — |
 | w1-git-plumbing | W1 | dispatched | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
 | w1-report-writer | W1 | dispatched | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
 | w1-registry-wiring | W1 | blocked (all W1 extractors/checkers) | C:\Repos\docspine.w1-registry-wiring | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
@@ -90,7 +90,7 @@ W2 EXIT ─► w3-* (parallel except w3-dogfood-docs, which lands last)
 
 ## Wave Status
 
-W1 (contracts + primitives): 3/14 merged · exit criteria: pending (Batch 2 specs being authored)
+W1 (contracts + primitives): 11/14 merged · exit criteria: pending (w1-symbol-index-ts re-dispatched post ca-005; w1-check-symbols + w1-registry-wiring remain)
 W2 (assembly + provider layer): 0/8 merged · blocked by W1 exit
 W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 
@@ -102,6 +102,8 @@ W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 | ca-002 | STRATEGY §2 verification convention | all W1/W2 parcel specs citing `npx tsx --test tests/` | merged (w1-contracts-core.md, w1-spike-verify-paths.md updated; other specs not yet written) | Canonical command is bare `npx tsx --test` (no path arg) — an explicit path makes Node's test runner treat it as a script entrypoint, not a discovery root. Verification also requires Node ≥22 active (`nvm use 22`); Node 20's test runner does not discover `.ts` test files by default. |
 | ca-003 | biome.json scope | w1-contracts-core (biome.json), interacts with w1-fixture-repo's tree | merged | `files.includes` excludes `fixtures/messy-repo` — that tree is inert fixture data with intentionally non-conforming formatting/lint characteristics, not lint-worthy source. |
 | ca-004 | Extractor line-numbering convention (process note, not a type change) | w1-extract-symbols, w1-extract-commands, w1-extract-links (Batch 2, specs not yet written at time of this note) | merged (documented, no contract edit) | `Claim.line` must be the full-source-file (post-frontmatter) line number, but `Extractor.extract(doc: ParsedDoc)` only ever sees frontmatter-stripped `doc.body`. w1-spike-verify-paths's working convention (kept, not changed): extractors compute `Claim.line` relative to `doc.body`'s own first line (1-indexed); the pipeline (`run-verify.ts`) adds the frontmatter line offset before a claim leaves the pipeline. Every Batch-2 extractor spec must state this explicitly so authors don't re-derive or misalign it. |
+| ca-005 | STRATEGY §2 `typescript` dependency pin | w1-symbol-index-ts (re-dispatched against the fix); any future parcel importing `typescript`'s compiler API | merged | Locked `typescript` at `^5.9.3` (classic compiler line), moved from `devDependencies` to `dependencies`. `^7.0.2` (as originally locked) resolves to TypeScript's native/"tsgo" rewrite, whose npm package exports only a version stub as its main entrypoint — the in-process parser API (`createSourceFile`, `createProgram`) doesn't exist there, only `tsc` CLI (native binary shim) and narrow `./unstable/*` subpaths. `tsc --noEmit` kept working throughout because it only ever needs the CLI shim, masking the gap until a parcel needed the in-process API. All 139 tests + tsc + biome reverified clean post-downgrade. |
+| ca-006 | fixtures/messy-repo/docs/canon/malformed-frontmatter.md content | w1-frontmatter-validate (surfaced it); no spec/type change | merged | Fixture doc was missing `last_verified_sha`/`last_verified_at`/`drift_tolerance` (all schema-required) in addition to its two intended defects (bad `kind` enum, missing `owner`) — real validator found 5 errors, oracle documented 2. Added the three fields back with correct not-yet-verified values so the doc exercises exactly its documented two defects again. Coordinator sign-off per `fixtures/README.md`'s post-merge change rule; `verify-inventory.ps1` still exits 0. |
 
 ## Open Decisions Needed
 
