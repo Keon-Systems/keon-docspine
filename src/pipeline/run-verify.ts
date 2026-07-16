@@ -28,6 +28,7 @@ import type {
 	Extractor,
 	GitFacts,
 	RepoContext,
+	SymbolIndex,
 } from "../contracts/index.js";
 import { parseDoc } from "./parse-doc.js";
 import { walkDocs } from "./walk.js";
@@ -40,6 +41,8 @@ import { walkDocs } from "./walk.js";
 export interface Registry {
 	extractors: Extractor[];
 	checkers: Checker[];
+	/** When present, called once per run to build the SymbolIndex added to ctx. */
+	symbolIndexBuilder?: (root: string) => SymbolIndex;
 }
 
 // Mirrors package.json's version. TODO(w1-report-writer): single source of
@@ -109,6 +112,9 @@ export async function runVerify(
 	const absRoot = path.resolve(repoRoot);
 	const git = getGitFacts(absRoot);
 	const ctx: RepoContext = { root: absRoot, git };
+	if (registry.symbolIndexBuilder) {
+		ctx.symbolIndex = registry.symbolIndexBuilder(absRoot);
+	}
 
 	const docPaths = walkDocs(absRoot);
 	const claimsByDoc = new Map<string, Claim[]>();

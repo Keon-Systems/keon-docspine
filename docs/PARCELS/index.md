@@ -15,13 +15,13 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 | w1-extract-symbols | W1 | dispatched | C:\Repos\docspine.w1-extract-symbols | feat/w1-extract-symbols | — | — |
 | w1-extract-commands | W1 | dispatched | C:\Repos\docspine.w1-extract-commands | feat/w1-extract-commands | — | — |
 | w1-extract-links | W1 | dispatched | C:\Repos\docspine.w1-extract-links | feat/w1-extract-links | — | — |
-| w1-check-symbols | W1 | dispatched | C:\Repos\docspine.w1-check-symbols | feat/w1-check-symbols | — | — |
+| w1-check-symbols | W1 | merged | n/a | feat/w1-check-symbols | ea40a09 (local) | Claude |
 | w1-check-commands | W1 | dispatched | C:\Repos\docspine.w1-check-commands | feat/w1-check-commands | — | — |
 | w1-check-links | W1 | dispatched | C:\Repos\docspine.w1-check-links | feat/w1-check-links | — | — |
 | w1-symbol-index-ts | W1 | merged | n/a | feat/w1-symbol-index-ts | ee42e1f (local) | Claude |
 | w1-git-plumbing | W1 | dispatched | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
 | w1-report-writer | W1 | dispatched | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
-| w1-registry-wiring | W1 | blocked (all W1 extractors/checkers) | C:\Repos\docspine.w1-registry-wiring | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
+| w1-registry-wiring | W1 | merged | n/a | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
 | w2-pipeline-audit | W2 | queued (W1 exit) | — | feat/w2-pipeline-audit | — | — |
 | w2-drift-engine | W2 | queued (W1 exit) | — | feat/w2-drift-engine | — | — |
 | w2-manifest-compile | W2 | queued (W1 exit) | — | feat/w2-manifest-compile | — | — |
@@ -90,7 +90,7 @@ W2 EXIT ─► w3-* (parallel except w3-dogfood-docs, which lands last)
 
 ## Wave Status
 
-W1 (contracts + primitives): 12/14 merged · exit criteria: pending (w1-check-symbols + w1-registry-wiring remain)
+W1 (contracts + primitives): 14/14 merged · exit criteria: MET — W2 unblocked
 W2 (assembly + provider layer): 0/8 merged · blocked by W1 exit
 W3 (hardening + release readiness): 0/6 merged · blocked by W2 exit
 

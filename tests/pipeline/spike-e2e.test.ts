@@ -114,13 +114,18 @@ test("defect #12: ok path claim in metrics-overview (src-py/report_utils.py)", (
 
 test("defect #13: exactly one ok path claim, no false positives (control negative)", () => {
 	const findings = findingsFor("all-claim-kinds-valid");
+	// With the full registry wired (w1-registry-wiring), all four claim kinds
+	// are now extracted and checked. Filter to path findings only — the test's
+	// intent is that the path extractor produces no false path claims for this
+	// doc, not that the doc has no other claim kinds.
+	const pathFindings = findings.filter((f) => f.claim.kind === "path");
 	assert.equal(
-		findings.length,
+		pathFindings.length,
 		1,
 		"control-negative #13 must have exactly one path finding",
 	);
-	assert.equal(findings[0]?.claim.value, "src/billing/invoice.ts");
-	assert.equal(findings[0]?.status, "ok");
+	assert.equal(pathFindings[0]?.claim.value, "src/billing/invoice.ts");
+	assert.equal(pathFindings[0]?.status, "ok");
 });
 
 // --- Defect #10: control negative, zero findings expected -----------------
