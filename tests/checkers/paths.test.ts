@@ -112,3 +112,12 @@ test("non-git repo root: missing path -> unverifiable, never broken, never a cra
 	assert.equal(findings[0]?.status, "unverifiable");
 	assert.match(findings[0]?.detail ?? "", /rename/);
 });
+
+test("claim value escaping the repo root via ../ -> broken, never followed onto the host filesystem", async () => {
+	const findings = await pathChecker.check(
+		[claim("../../../../etc/passwd")],
+		gitCtx(),
+	);
+	assert.equal(findings[0]?.status, "broken");
+	assert.match(findings[0]?.detail ?? "", /path_escapes_repo_root/);
+});

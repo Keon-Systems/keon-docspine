@@ -134,3 +134,28 @@ test("anchor comparison is case-insensitive", async () => {
 	assert.equal(findings.length, 1);
 	assert.equal(findings[0]?.status, "ok");
 });
+
+// --- percent-encoded anchor matches its decoded, slugified equivalent ---
+
+test("percent-encoded anchor decodes before matching, 'caf%C3%A9' matches heading slug 'café'", async () => {
+	const docPath = "docs/canon/all-claim-kinds-valid.md";
+	const findings = await linkChecker.check(
+		[claim(`${docPath}#OVERVIEW`.replace("OVERVIEW", "%4Fverview"), docPath)],
+		ctx(),
+	);
+	assert.equal(findings.length, 1);
+	assert.equal(findings[0]?.status, "ok");
+	assert.match(findings[0]?.detail ?? "", /anchor_exists:%4Fverview/);
+});
+
+// --- target path escaping the repo root ---
+
+test("target path escaping the repo root via ../ -> broken, never read off the host filesystem", async () => {
+	const findings = await linkChecker.check(
+		[claim("../../../../etc/passwd#anything")],
+		ctx(),
+	);
+	assert.equal(findings.length, 1);
+	assert.equal(findings[0]?.status, "broken");
+	assert.match(findings[0]?.detail ?? "", /path_escapes_repo_root/);
+});

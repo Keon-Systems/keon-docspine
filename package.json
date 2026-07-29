@@ -10,7 +10,7 @@
 	"scripts": {
 		"build": "tsc --noEmit",
 		"lint": "biome check .",
-		"test": "tsx --test"
+		"test": "node scripts/run-tests.mjs"
 	},
 	"license": "UNLICENSED",
 	"dependencies": {

@@ -7,6 +7,7 @@
  * filesystem walk (skipping `.git/` and `node_modules/` defensively).
  */
 import { execFileSync } from "node:child_process";
+import type { Dirent } from "node:fs";
 import { readdirSync } from "node:fs";
 import path from "node:path";
 
@@ -27,7 +28,13 @@ function isGitRepo(repoRoot: string): boolean {
 }
 
 function walkFs(dir: string, repoRoot: string, out: string[]): void {
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+	let entries: Dirent[];
+	try {
+		entries = readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return; // unreadable directory -- skip defensively (same discipline as symbol-index/typescript.ts)
+	}
+	for (const entry of entries) {
 		if (entry.name === ".git" || entry.name === "node_modules") continue;
 		const full = path.join(dir, entry.name);
 		if (entry.isDirectory()) {

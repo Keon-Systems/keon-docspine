@@ -120,7 +120,15 @@ export async function runVerify(
 	const claimsByDoc = new Map<string, Claim[]>();
 
 	for (const relPath of docPaths) {
-		const raw = readFileSync(path.join(absRoot, relPath), "utf8");
+		let raw: string;
+		try {
+			raw = readFileSync(path.join(absRoot, relPath), "utf8");
+		} catch {
+			// Tracked-but-unreadable (e.g. a staged deletion, or unreadable
+			// permissions) — skip defensively, same discipline as every other
+			// filesystem read in this pipeline (never crash the whole run).
+			continue;
+		}
 		const { doc, bodyLineOffset } = parseDoc(relPath, raw);
 
 		const claims: Claim[] = [];
@@ -158,6 +166,9 @@ export async function runVerify(
 		claimFindings.sort((a, b) => a.claim.line - b.claim.line);
 
 		const total = claimFindings.length;
+		// Per contracts/report.ts's DocScore.brokenClaimRatio doc comment, this
+		// is deliberately "not ok" (broken + moved + unverifiable), not "broken"
+		// alone — an intentional contract choice, not an oversight.
 		const brokenCount = claimFindings.filter((f) => f.status !== "ok").length;
 
 		docFindings.push({

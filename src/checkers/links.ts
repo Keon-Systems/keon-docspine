@@ -88,6 +88,32 @@ function splitTargetAndAnchor(value: string): {
 	return { targetPath: value.slice(0, idx), anchor: value.slice(idx + 1) };
 }
 
+/**
+ * Docs are untrusted data (per `AGENTS.md`'s prompt-injection posture): a
+ * claim value containing `../` segments must never be followed outside
+ * `root` and verified against the host filesystem, since that would let a
+ * doc claim to "prove" the existence of an arbitrary file elsewhere on disk.
+ * Same guard as `src/checkers/paths.ts`'s `isWithinRoot`.
+ */
+function isWithinRoot(root: string, abs: string): boolean {
+	const rel = path.relative(root, abs);
+	return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/**
+ * Decodes a percent-encoded anchor (e.g. `caf%C3%A9-notes`, which GitHub
+ * resolves to `café-notes` before slugifying) so encoded and literal anchors
+ * compare equal. Falls back to the raw anchor on a malformed escape sequence
+ * rather than throwing.
+ */
+function decodeAnchor(anchor: string): string {
+	try {
+		return decodeURIComponent(anchor);
+	} catch {
+		return anchor;
+	}
+}
+
 export const linkChecker: Checker = {
 	id: "check-links",
 	kind: "link",
@@ -96,6 +122,10 @@ export const linkChecker: Checker = {
 		return claims.map((claim) => {
 			const { targetPath, anchor } = splitTargetAndAnchor(claim.value);
 			const abs = path.join(ctx.root, targetPath);
+
+			if (!isWithinRoot(ctx.root, abs)) {
+				return { claim, status: "broken", detail: "path_escapes_repo_root" };
+			}
 
 			if (!existsSync(abs)) {
 				return { claim, status: "broken", detail: "link_target_missing" };
@@ -112,7 +142,7 @@ export const linkChecker: Checker = {
 				};
 			}
 
-			const anchorLower = anchor.toLowerCase();
+			const anchorLower = decodeAnchor(anchor).toLowerCase();
 			const slugs = extractAtxHeadings(source).map(slugify);
 			if (slugs.some((slug) => slug === anchorLower)) {
 				return { claim, status: "ok", detail: `anchor_exists:${anchor}` };

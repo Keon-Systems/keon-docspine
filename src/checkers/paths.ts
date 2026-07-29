@@ -25,10 +25,10 @@ import type {
 } from "../contracts/index.js";
 
 /**
- * Looks for a git rename record showing `missingPath` was renamed to some
- * other path, by scanning the repo's full rename history and matching
- * client-side. Returns the new path when found, `null` otherwise (including
- * on any git failure — never throws).
+ * Scans the repo's full rename history ONCE and returns a map from a
+ * renamed-away-from path to its rename target, for O(1) lookup per missing
+ * claim instead of re-running `git log` over full history per claim. Returns
+ * an empty map on any git failure — never throws.
  *
  * Implementation note (spike friction worth flagging to the coordinator):
  * the parcel spec names `git log --follow --diff-filter=R` as the detection
@@ -46,7 +46,8 @@ import type {
  * to (single rename hop, no chained renames) — just without `--follow`
  * doing the useless-in-this-direction legwork.
  */
-function findRenameTarget(root: string, missingPath: string): string | null {
+function buildRenameMap(root: string): Map<string, string> {
+	const map = new Map<string, string>();
 	let out: string;
 	try {
 		out = execFileSync(
@@ -55,7 +56,7 @@ function findRenameTarget(root: string, missingPath: string): string | null {
 			{ cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
 		);
 	} catch {
-		return null;
+		return map;
 	}
 
 	for (const rawLine of out.split("\n")) {
@@ -64,11 +65,25 @@ function findRenameTarget(root: string, missingPath: string): string | null {
 		const match = /^R\d*\t([^\t]+)\t([^\t]+)$/.exec(line);
 		if (!match) continue;
 		const [, fromPath, toPath] = match;
-		if (fromPath === missingPath && toPath) {
-			return toPath;
+		// First-hop-wins: full history is scanned oldest-to-newest-reversed by
+		// `git log`'s default order, but only a single rename hop is in scope
+		// (see file header) — do not overwrite an existing entry.
+		if (fromPath && toPath && !map.has(fromPath)) {
+			map.set(fromPath, toPath);
 		}
 	}
-	return null;
+	return map;
+}
+
+/**
+ * Docs are untrusted data (per `AGENTS.md`'s prompt-injection posture): a
+ * claim value containing `../` segments must never be followed outside
+ * `root` and verified against the host filesystem, since that would let a
+ * doc claim to "prove" the existence of an arbitrary file elsewhere on disk.
+ */
+function isWithinRoot(root: string, abs: string): boolean {
+	const rel = path.relative(root, abs);
+	return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
 export const pathChecker: Checker = {
@@ -76,8 +91,15 @@ export const pathChecker: Checker = {
 	kind: "path",
 
 	async check(claims: Claim[], ctx: RepoContext): Promise<ClaimFinding[]> {
+		// Built lazily, once per run, and only if a claim actually needs it —
+		// avoids an unbounded `git log` scan when every claim resolves on disk.
+		let renameMap: Map<string, string> | undefined;
+
 		return claims.map((claim) => {
 			const abs = path.join(ctx.root, claim.value);
+			if (!isWithinRoot(ctx.root, abs)) {
+				return { claim, status: "broken", detail: "path_escapes_repo_root" };
+			}
 			if (existsSync(abs)) {
 				return { claim, status: "ok" };
 			}
@@ -91,7 +113,10 @@ export const pathChecker: Checker = {
 				};
 			}
 
-			const movedTo = findRenameTarget(ctx.root, claim.value);
+			if (!renameMap) {
+				renameMap = buildRenameMap(ctx.root);
+			}
+			const movedTo = renameMap.get(claim.value);
 			if (movedTo) {
 				return {
 					claim,

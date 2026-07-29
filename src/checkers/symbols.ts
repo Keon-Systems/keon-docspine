@@ -83,15 +83,12 @@ function isForeignSource(file: string): boolean {
 function listForeignSourceFiles(root: string, isGitRepo: boolean): string[] {
 	if (isGitRepo) {
 		try {
-			const out = execFileSync("git", ["ls-files"], {
+			const out = execFileSync("git", ["ls-files", "-z"], {
 				cwd: root,
 				encoding: "utf8",
 				stdio: ["ignore", "pipe", "pipe"],
 			});
-			return out
-				.split("\n")
-				.map((l) => l.trim())
-				.filter((l) => l.length > 0 && isForeignSource(l));
+			return out.split("\0").filter((l) => l.length > 0 && isForeignSource(l));
 		} catch {
 			// fall through to filesystem walk
 		}
