@@ -78,3 +78,26 @@ When you find a doc/code disagreement: (1) proceed from code; (2) do not
 silently edit the doc mid-task; (3) note the conflict (doc id or path,
 claim, observed reality, file:line) in your task output. Doc fixes are
 their own change with their own verification pass.
+
+## Working in this repo
+
+Canonical verification command — run this before claiming a parcel is done:
+
+```
+npm run verify        # tsc --noEmit && biome check . && node scripts/run-tests.mjs
+```
+
+Individually: `npm run build`, `npm run lint`, `npm test`.
+
+Environment traps, both of which fail silently rather than loudly if unguarded:
+
+- **`NODE_ENV=production`** makes npm skip every devDependency (typescript, tsx,
+  biome). The install reports success; every test then dies with
+  `ERR_MODULE_NOT_FOUND: Cannot find package 'tsx'`. A `preinstall` guard now
+  blocks this — run `npm run check-env` to test your shell before blaming code.
+- **Node < 22** collects zero tests instead of failing (amendment ca-002).
+  `engine-strict=true` in `.npmrc` blocks it at install time.
+
+If `npm test` reports failures, check `npm run check-env` first. A green
+environment check plus red tests means real breakage; a red environment check
+means your shell lied to you, not the code.

@@ -22,3 +22,6 @@ npm-debug.log*
 # docaudit local state (design spec §6 — team choice; default to ignored)
 /.docaudit/reports
 /.docaudit/cache
+
+# local agent/editor tooling state (machine-specific, never shared)
+/.serena

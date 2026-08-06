@@ -8,9 +8,12 @@
 		"node": ">=22"
 	},
 	"scripts": {
+		"preinstall": "node scripts/check-env.mjs",
+		"check-env": "node scripts/check-env.mjs",
 		"build": "tsc --noEmit",
 		"lint": "biome check .",
-		"test": "node scripts/run-tests.mjs"
+		"test": "node scripts/run-tests.mjs",
+		"verify": "npm run build && npm run lint && npm test"
 	},
 	"license": "UNLICENSED",
 	"dependencies": {
