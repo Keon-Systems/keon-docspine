@@ -22,11 +22,11 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 | w1-git-plumbing | W1 | dispatched | C:\Repos\docspine.w1-git-plumbing | feat/w1-git-plumbing | — | — |
 | w1-report-writer | W1 | dispatched | C:\Repos\docspine.w1-report-writer | feat/w1-report-writer | — | — |
 | w1-registry-wiring | W1 | merged | n/a | feat/w1-registry-wiring | — | serialized — coordinator-adjacent |
-| w2-pipeline-audit | W2 | queued (W1 exit) | — | feat/w2-pipeline-audit | — | — |
-| w2-drift-engine | W2 | queued (W1 exit) | — | feat/w2-drift-engine | — | — |
-| w2-manifest-compile | W2 | queued (W1 exit) | — | feat/w2-manifest-compile | — | — |
-| w2-cli-wiring | W2 | queued (W2 assembly) | — | feat/w2-cli-wiring | — | serialized |
-| w2-provider-router | W2 | queued (W1 exit) | — | feat/w2-provider-router | — | — |
+| w2-pipeline-audit | W2 | queued — spec not yet written | C:\Repos\docspine.w2-pipeline-audit | feat/w2-pipeline-audit | — | — |
+| w2-drift-engine | W2 | **SPEC READY — Batch A** | C:\Repos\docspine.w2-drift-engine | feat/w2-drift-engine | — | — |
+| w2-manifest-compile | W2 | **SPEC READY — Batch A** | C:\Repos\docspine.w2-manifest-compile | feat/w2-manifest-compile | — | — |
+| w2-cli-wiring | W2 | **SPEC READY — Batch C (serialized, last)** | C:\Repos\docspine.w2-cli-wiring | feat/w2-cli-wiring | — | serialized |
+| w2-provider-router | W2 | **SPEC READY — Batch A** | C:\Repos\docspine.w2-provider-router | feat/w2-provider-router | — | — |
 | w2-adapter-openai-compat | W2 | queued (provider-router) | — | feat/w2-adapter-openai-compat | — | — |
 | w2-schema-repair | W2 | queued (provider-router) | — | feat/w2-schema-repair | — | — |
 | w2-lexical-similarity | W2 | queued (W1 exit) | — | feat/w2-lexical-similarity | — | — |
