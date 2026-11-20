@@ -18,6 +18,7 @@ import type {
 	ContradictionCandidate,
 	CoverageGap,
 	DocFinding,
+	DocumentDiagnostic,
 } from "../contracts/index.js";
 
 function compareStrings(a: string, b: string): number {
@@ -34,6 +35,17 @@ function compareClaimFindings(a: ClaimFinding, b: ClaimFinding): number {
 
 function compareDocFindings(a: DocFinding, b: DocFinding): number {
 	return compareStrings(a.docId, b.docId);
+}
+
+function compareDocumentDiagnostics(
+	a: DocumentDiagnostic,
+	b: DocumentDiagnostic,
+): number {
+	return (
+		compareStrings(a.path, b.path) ||
+		compareStrings(a.code, b.code) ||
+		compareStrings(a.message, b.message)
+	);
 }
 
 function compareCoverageGaps(a: CoverageGap, b: CoverageGap): number {
@@ -63,6 +75,7 @@ function compareContradictions(
  * deterministic order:
  *   - `docFindings`: sorted by `docId` (lexicographic).
  *   - each `docFindings[].claimFindings`: sorted by `(claim.line, claim.kind, claim.value)` ascending, in that tie-break order.
+ *   - `documentDiagnostics`, when present: sorted by `(path, code, message)` (lexicographic); absence is preserved.
  *   - `gaps`: sorted by `target` (lexicographic).
  *   - `contradictions`: sorted by `docIds` (lexicographic on the joined pair via `JSON.stringify`).
  *
@@ -71,6 +84,9 @@ function compareContradictions(
  */
 export function canonicalizeReport(report: AuditReport): AuditReport {
 	const cloned = structuredClone(report);
+	if (cloned.documentDiagnostics !== undefined) {
+		cloned.documentDiagnostics.sort(compareDocumentDiagnostics);
+	}
 
 	const docFindings = cloned.docFindings.map((docFinding) => ({
 		...docFinding,

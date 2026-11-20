@@ -107,6 +107,18 @@ export interface ContradictionCandidate {
 }
 
 /**
+ * A document could not be read or its frontmatter failed validation (ca-010).
+ * Not a claim finding: never fabricate a Claim or include this in DocScore.
+ */
+export interface DocumentDiagnostic {
+	/** Repo-root-relative POSIX file path: no leading "./", absolute path, backslash, or dot segments. */
+	path: string;
+	code: "unreadable_document" | "invalid_frontmatter";
+	/** Actionable explanation: identify the read/validation failure and what to fix; avoid volatile OS error strings. */
+	message: string;
+}
+
+/**
  * `.docaudit/reports/audit-<sha>.json` — the full output of `docaudit audit`.
  */
 export interface AuditReport {
@@ -125,6 +137,8 @@ export interface AuditReport {
 	 */
 	analysisDepth: string;
 	docFindings: DocFinding[];
+	/** Optional for backward compatibility; document failures are separate from claim findings and never scored. */
+	documentDiagnostics?: DocumentDiagnostic[];
 	gaps: CoverageGap[];
 	contradictions: ContradictionCandidate[];
 }

@@ -14,6 +14,7 @@ C:\Repos\docspine.w2-pipeline-audit
 
 ## Dependencies
 - W1 complete (merged) — all extractors/checkers registered in `src/registry.ts`
+- ca-010 prerequisite — optional `AuditReport.documentDiagnostics` in the report contract/schema and canonicalization
 - None in W2 Batch A — accepts narrow typed options (no config file reads; `w2-cli-wiring` maps `DocSpineConfig` → options)
 
 ## Allowed Files
@@ -63,13 +64,14 @@ Locked decisions:
 3. **`fanIn`** = count of repo files importing/referencing the target (static text match on import specifiers is sufficient for v1; do not build a real dep graph). `churn` = commits touching the target.
 4. **`analysisDepth`** must be set honestly — `"t0-only"` for this parcel. It exists so a quiet report can never be mistaken for a clean one.
 5. Inventory honors `opts.ignore` globs via `picomatch` and respects `.gitignore` via `git ls-files` when the repo is a git repo (same rule the spike's walk already uses).
-6. **Unreadable or malformed docs never abort the run.** They appear in the report as findings. There is already a regression test for this (`tests/pipeline/run-verify-unreadable-doc.test.ts`) — do not weaken it.
+6. **Unreadable or malformed docs never abort the run.** `runAudit` emits `documentDiagnostics` with the repo-relative POSIX `path`, stable `code` (`unreadable_document` or `invalid_frontmatter`), and an actionable, deterministic `message`. These are NOT claim findings: never fabricate a `Claim`, `docId`, line, or score to represent a document failure, and never include diagnostics in `brokenClaimRatio` or other scores. Keep the existing `runVerify` tracked-but-unreadable skip behavior (no `DocFinding`) and its regression test (`tests/pipeline/run-verify-unreadable-doc.test.ts`) unchanged. Malformed but readable docs may still yield genuine extracted claims under the existing parser fallback; report validation failures separately. Omit diagnostics when absent or emit `[]`; canonicalization preserves absence and sorts present entries by `(path, code, message)`.
 
 ## Required Tests
 - Full audit against a temp fixture copy: every `EXPECTED-FINDINGS.md` row reproduced across all four claim kinds, with expected statuses
 - **Zero findings on both control negatives** (defects #10, #13) — precision, not just recall
 - Coverage gap detects the fixture's undocumented subsystem (defect #9) and does NOT flag documented ones
 - `brokenClaimRatio` excludes `unverifiable`: a doc whose only defect is the Python symbol claim (#12) scores `0`, not a penalty
+- Tracked-but-missing document and malformed frontmatter produce the corresponding actionable document diagnostics in `runAudit`, with no invented claims or diagnostic-derived scores; existing `runVerify` skip regression remains green
 - Emitted report validates against `schemas/report.schema.json` via ajv
 - Byte-stability: two runs at the same SHA produce identical report bytes
 - `contradictions` is `[]` and no `provisionalKind` is invented
