@@ -33,9 +33,9 @@ export function minhashSignature(
 
 /** Fraction of matching positions; empty signatures have similarity zero. */
 export function jaccardEstimate(sigA: number[], sigB: number[]): number {
+	if (sigA.length === 0 || sigB.length === 0) return 0;
 	if (sigA.length !== sigB.length)
 		throw new RangeError("Signature lengths must match");
-	if (sigA.length === 0) return 0;
 	let equal = 0;
 	for (let i = 0; i < sigA.length; i++) if (sigA[i] === sigB[i]) equal++;
 	return equal / sigA.length;

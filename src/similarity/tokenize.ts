@@ -38,7 +38,7 @@ export function tokenizeDoc(body: string): string[] {
 		.join("\n")
 		// Matching backtick runs, including multi-backtick inline code spans.
 		.replace(/(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g, " ")
-		.replace(/(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>]+/gi, " ")
+		.replace(/(?:https?:\/\/|ftp:\/\/|www\.)[^\s<>[\]()]+/gi, " ")
 		.toLowerCase();
 	return (text.match(/[a-z0-9]+/g) ?? []).filter(
 		(token) => token.length >= 3 && !STOPWORDS.has(token),

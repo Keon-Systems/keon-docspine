@@ -21,6 +21,13 @@ test("strips frontmatter and URLs but preserves link labels and headings", () =>
 	]);
 });
 
+test("URLs do not consume adjacent labels or following prose", () => {
+	assert.deepEqual(
+		tokenizeDoc("[alpha](https://a.test)[beta](https://b.test)gamma"),
+		["alpha", "beta", "gamma"],
+	);
+});
+
 test("strips backtick and tilde fences, longer delimiters, and unclosed fences", () => {
 	const body = [
 		"before",

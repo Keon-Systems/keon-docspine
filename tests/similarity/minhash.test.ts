@@ -47,6 +47,8 @@ test("hash count changes resolution with stable signature prefixes", () => {
 test("empty inputs are zero similarity, invalid sizes are rejected", () => {
 	assert.deepEqual(minhashSignature([], 128), []);
 	assert.equal(jaccardEstimate([], []), 0);
+	assert.equal(jaccardEstimate([], [1, 2]), 0);
+	assert.equal(jaccardEstimate([1, 2], []), 0);
 	assert.throws(() => jaccardEstimate([1], [1, 2]), RangeError);
 	for (const count of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])
 		assert.throws(() => minhashSignature([], count), RangeError);
