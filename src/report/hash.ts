@@ -11,25 +11,7 @@ import { createHash } from "node:crypto";
 import type { AuditReport } from "../contracts/index.js";
 import { canonicalizeReport } from "./canonicalize.js";
 
-/**
- * Recursively rebuilds `value` with every plain object's keys sorted
- * lexicographically, leaving array element order untouched (array ordering
- * is `canonicalizeReport`'s job, not this function's). Returned value is a
- * plain JSON-serializable structure suitable for `JSON.stringify`.
- */
-function sortKeysDeep(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map(sortKeysDeep);
-	}
-	if (value !== null && typeof value === "object") {
-		const sorted: Record<string, unknown> = {};
-		for (const key of Object.keys(value as Record<string, unknown>).sort()) {
-			sorted[key] = sortKeysDeep((value as Record<string, unknown>)[key]);
-		}
-		return sorted;
-	}
-	return value;
-}
+import { stableStringify } from "./serialize.js";
 
 /**
  * Canonicalizes `report` (via `canonicalizeReport`) and returns a stable
@@ -43,6 +25,6 @@ function sortKeysDeep(value: unknown): unknown {
  */
 export function hashReport(report: AuditReport): string {
 	const canonical = canonicalizeReport(report);
-	const serialized = JSON.stringify(sortKeysDeep(canonical));
+	const serialized = stableStringify(canonical);
 	return createHash("sha256").update(serialized, "utf8").digest("hex");
 }

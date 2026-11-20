@@ -16,6 +16,19 @@ C:\Repos\docspine.w2-manifest-compile
 - W1 complete (merged) — frontmatter validation, doc walking
 - None in W2 Batch A — accepts narrow typed options (no config file reads; `w2-cli-wiring` maps `DocSpineConfig` → options)
 
+## Shared serializer prerequisite (TASK-03 scope amendment)
+
+Before the compiler, land a distinct prerequisite commit extracting the existing
+recursive object-key sorter from `src/report/hash.ts` into
+`src/report/serialize.ts` as `stableStringify`. It must retain every JSON key
+(including `__proto__`), preserve array order, and preserve existing report
+hash bytes (regression-tested in `tests/report/hash.test.ts`). Both report
+hashing and manifest serialization use this one shared serializer.
+`canonicalizeReport` remains report-only and unchanged. Manifest-specific
+array ordering belongs to the compiler; explicit context packet order is retained.
+This prerequisite supersedes the serializer stop rule and read-only restriction
+below; it does not authorize any contract or schema changes.
+
 ## Allowed Files
 - src/manifest/compile.ts
 - src/manifest/tokens.ts
