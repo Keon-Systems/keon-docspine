@@ -14,7 +14,7 @@ C:\Repos\docspine.w2-manifest-compile
 
 ## Dependencies
 - W1 complete (merged) — frontmatter validation, doc walking
-- w2-config-load (merged) — `routes`, `contextPackets`
+- None in W2 Batch A — accepts narrow typed options (no config file reads; `w2-cli-wiring` maps `DocSpineConfig` → options)
 
 ## Allowed Files
 - src/manifest/compile.ts
@@ -44,7 +44,12 @@ Drift status (consumed if already present in frontmatter, never computed here), 
 
 ## Contract
 ```ts
-export function compileManifest(repoRoot: string, cfg: DocSpineConfig): Promise<{
+export interface CompileManifestOptions {
+  routes?: ManifestRoute[];
+  contextPackets?: Record<string, string[]>;
+  ignore?: string[];
+}
+export function compileManifest(repoRoot: string, opts?: CompileManifestOptions): Promise<{
   manifest: Manifest;
   indexMd: string;
   errors: string[];       // e.g. subsystem referenced but not declared

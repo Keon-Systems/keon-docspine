@@ -33,7 +33,7 @@ async function main(): Promise<void> {
 	const counts = { ok: 0, broken: 0, moved: 0, unverifiable: 0 };
 	for (const f of allFindings) counts[f.status]++;
 
-	console.log("DocSpine spike-verify (path claims only)");
+	console.log("DocSpine spike-verify (T0 deterministic claims)");
 	console.log(`repo:   ${repoRoot}`);
 	console.log(`sha:    ${report.generatedAtSha}`);
 	console.log(`docs:   ${report.docFindings.length}`);

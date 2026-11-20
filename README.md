@@ -32,7 +32,6 @@ verification spike described below.
   will silently collect zero tests (amendment ca-002). Enforced via
   `engine-strict`.
 - Git on `PATH` (rename detection and drift shell out to `git`).
-- PowerShell 7 (`pwsh`) for the fixture setup script.
 
 > **`NODE_ENV=production` will break your install.** npm derives `omit=dev` from
 > it and skips the entire verification toolchain, producing an install that
@@ -56,9 +55,9 @@ defects and an oracle (`fixtures/messy-repo/EXPECTED-FINDINGS.md`) that names th
 exact finding each defect should produce — including two control negatives, so
 the suite tests precision and not just recall.
 
-```powershell
-pwsh fixtures/messy-repo/setup-fixture-git.ps1 -Target $env:TEMP\ds-demo
-npx tsx scripts/spike-verify.ts $env:TEMP\ds-demo
+```bash
+node fixtures/messy-repo/setup-fixture-git.mjs /tmp/ds-demo
+npx tsx scripts/spike-verify.ts /tmp/ds-demo
 ```
 
 The fixture needs seeded git history (the setup script provides it) because

@@ -26,7 +26,14 @@ import type { DocKind, DocStatus } from "./frontmatter.js";
  * pipeline logic, not part of this shape.
  */
 export interface DocScore {
-	/** Fraction (0–1) of this doc's extracted claims whose finding status is not `"ok"`. */
+	/**
+	 * Fraction (0–1) of this doc's *verifiable* extracted claims whose finding
+	 * status is `"broken"` or `"moved"`, i.e. `(broken + moved) / (ok + broken + moved)`.
+	 * `"unverifiable"` findings are excluded from both numerator and denominator
+	 * (amendment ca-009): we cannot fault a doc for claims the tool lacks the
+	 * ability to check (e.g. a Python symbol under the TS-only v1 indexer).
+	 * `0` when the doc has zero verifiable claims.
+	 */
 	brokenClaimRatio: number;
 	/** Count of commits touching any path matched by this doc's `covers` globs since the doc's last git touch. */
 	coveredCodeChurn: number;

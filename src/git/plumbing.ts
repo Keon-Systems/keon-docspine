@@ -25,16 +25,26 @@ export interface DiffEntry {
 	status: "added" | "modified" | "deleted" | "renamed";
 	/** Present only when `status` is `"renamed"`: the path's prior name. */
 	renamedFrom?: string;
+	/**
+	 * Present when `status` is `"renamed"` and reported by `git diff -M`:
+	 * git's content-similarity score (0–100). Lets `classifyChange` classify a
+	 * rename in O(1) without re-scanning full repository history.
+	 */
+	renameSimilarity?: number;
 }
 
 /** Design spec §11.1 — the three-way change classification the future drift engine scores against. */
 export type ChangeKind = "contract-level" | "material" | "cosmetic";
 
+/** Generous stdout buffer so large repositories never silently truncate or fail `git log` / `git diff`. */
+const GIT_MAX_BUFFER = 64 * 1024 * 1024;
+
 function runGit(root: string, args: string[]): string | null {
 	try {
-		return execFileSync("git", args, {
+		return execFileSync("git", ["-c", "core.quotepath=false", ...args], {
 			cwd: root,
 			encoding: "utf8",
+			maxBuffer: GIT_MAX_BUFFER,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 	} catch {
@@ -70,11 +80,19 @@ export function diffSinceSha(root: string, sinceSha: string): DiffEntry[] {
 		if (code.startsWith("R")) {
 			const [, fromPath, toPath] = parts;
 			if (fromPath && toPath) {
-				entries.push({
+				const simDigits = code.slice(1);
+				const parsedSim = simDigits
+					? Number.parseInt(simDigits, 10)
+					: Number.NaN;
+				const entry: DiffEntry = {
 					path: toPath,
 					status: "renamed",
 					renamedFrom: fromPath,
-				});
+				};
+				if (Number.isFinite(parsedSim)) {
+					entry.renameSimilarity = parsedSim;
+				}
+				entries.push(entry);
 			}
 			continue;
 		}
@@ -98,24 +116,14 @@ export function diffSinceSha(root: string, sinceSha: string): DiffEntry[] {
 }
 
 /**
- * Single-hop rename lookup: if `missingPath` was renamed to some other path
- * at any point in `root`'s history, returns the new path. Returns `null` on
- * no match, not-a-git-repo, or any git failure — never throws. This is the
- * general-purpose version of the same logic already inlined in
- * `src/checkers/paths.ts`'s `findRenameTarget` (not refactored to share code
- * in this parcel — see Forbidden).
- *
- * Implementation note, carried over from `paths.ts` (confirmed there
- * empirically): `git log --follow` walks a single file's history *backward*
- * from an existing path, so handing it the stale/deleted OLD path as a
- * pathspec makes it report the rename commit as a plain `D <oldpath>`
- * delete, not an `R <old> <new>` record — pathspec filtering on a diff
- * resolves by the post-image name, not the pre-image one. So this scans
- * full rename history with NO pathspec restriction and matches the "from"
- * side ourselves, rather than relying on `--follow` to do it in a direction
- * it doesn't support.
+ * Builds a single-pass map of renamed-from -> final renamed-to paths across
+ * `root`'s git history, following multi-hop rename chains (`A -> B -> C` maps
+ * `A -> C` and `B -> C`). Returns an empty map on any git failure — never
+ * throws. Callers checking many missing paths should build this map once and
+ * query it in O(1) instead of calling `findRename` in a loop.
  */
-export function findRename(root: string, missingPath: string): string | null {
+export function buildRenameMap(root: string): Map<string, string> {
+	const direct = new Map<string, string>();
 	const out = runGit(root, [
 		"log",
 		"--diff-filter=R",
@@ -123,7 +131,7 @@ export function findRename(root: string, missingPath: string): string | null {
 		"--name-status",
 		"--format=",
 	]);
-	if (out === null) return null;
+	if (out === null) return direct;
 
 	for (const rawLine of out.split("\n")) {
 		const line = rawLine.trim();
@@ -131,11 +139,32 @@ export function findRename(root: string, missingPath: string): string | null {
 		const match = /^R\d*\t([^\t]+)\t([^\t]+)$/.exec(line);
 		if (!match) continue;
 		const [, fromPath, toPath] = match;
-		if (fromPath === missingPath && toPath) {
-			return toPath;
+		if (fromPath && toPath && !direct.has(fromPath)) {
+			direct.set(fromPath, toPath);
 		}
 	}
-	return null;
+
+	// Follow multi-hop rename chains (A -> B -> C) with cycle protection.
+	const resolved = new Map<string, string>();
+	for (const [start, firstHop] of direct) {
+		const seen = new Set<string>([start]);
+		let curr = firstHop;
+		while (direct.has(curr) && !seen.has(curr)) {
+			seen.add(curr);
+			curr = direct.get(curr) as string;
+		}
+		resolved.set(start, curr);
+	}
+	return resolved;
+}
+
+/**
+ * Rename lookup: if `missingPath` was renamed (single-hop or chained) at any
+ * point in `root`'s history, returns the latest renamed path. Returns `null`
+ * on no match, not-a-git-repo, or any git failure — never throws.
+ */
+export function findRename(root: string, missingPath: string): string | null {
+	return buildRenameMap(root).get(missingPath) ?? null;
 }
 
 /**
@@ -200,7 +229,17 @@ function lastChangeRange(
  * default that never hides a real change behind an optimistic "cosmetic"
  * label.
  */
-function classifyContentChange(root: string, filePath: string): ChangeKind {
+function classifyContentChange(
+	root: string,
+	filePath: string,
+	sinceSha?: string,
+): ChangeKind {
+	if (sinceSha) {
+		const diff = runGit(root, ["diff", "-w", sinceSha, "HEAD", "--", filePath]);
+		if (diff === null) return "material";
+		return diff.trim().length === 0 ? "cosmetic" : "material";
+	}
+
 	const range = lastChangeRange(root, filePath);
 	if (!range) return "material";
 	const [parent, commit] = range;
@@ -214,15 +253,17 @@ function classifyContentChange(root: string, filePath: string): ChangeKind {
  * Classifies a rename as `"cosmetic"` when git recorded it as a 100%
  * content-similarity rename (a pure move, byte-identical content) and
  * `"material"` otherwise (renamed with an accompanying content edit).
- * Returns `"material"` (safe default) if no matching rename record can be
- * found in history.
+ * Uses `entry.renameSimilarity` directly when already supplied by
+ * `diffSinceSha`, avoiding a full-history `git log` scan.
  */
 function classifyRename(
 	root: string,
 	fromPath: string,
 	toPath: string,
+	knownSimilarity?: number,
 ): ChangeKind {
-	const similarity = renameSimilarity(root, fromPath, toPath);
+	const similarity =
+		knownSimilarity ?? renameSimilarity(root, fromPath, toPath);
 	if (similarity === null) return "material";
 	return similarity === 100 ? "cosmetic" : "material";
 }
@@ -279,6 +320,7 @@ export function classifyChange(
 	root: string,
 	entry: DiffEntry,
 	contractPaths: string[],
+	sinceSha?: string,
 ): ChangeKind {
 	try {
 		const isContractPath = (p: string) =>
@@ -295,10 +337,18 @@ export function classifyChange(
 	}
 
 	try {
-		if (entry.status === "renamed" && entry.renamedFrom !== undefined) {
-			return classifyRename(root, entry.renamedFrom, entry.path);
+		if (entry.status === "added" || entry.status === "deleted") {
+			return "material";
 		}
-		return classifyContentChange(root, entry.path);
+		if (entry.status === "renamed" && entry.renamedFrom !== undefined) {
+			return classifyRename(
+				root,
+				entry.renamedFrom,
+				entry.path,
+				entry.renameSimilarity,
+			);
+		}
+		return classifyContentChange(root, entry.path, sinceSha);
 	} catch {
 		return "material";
 	}

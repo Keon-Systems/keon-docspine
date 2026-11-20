@@ -19,7 +19,7 @@ import type { Claim, RepoContext } from "../../src/contracts/index.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const setupScript = path.resolve(
 	__dirname,
-	"../../fixtures/messy-repo/setup-fixture-git.ps1",
+	"../../fixtures/messy-repo/setup-fixture-git.mjs",
 );
 
 let seededRoot: string;
@@ -29,11 +29,7 @@ before(() => {
 		os.tmpdir(),
 		`ds-spike-checkers-${randomBytes(4).toString("hex")}`,
 	);
-	execFileSync(
-		"pwsh",
-		["-NoLogo", "-NoProfile", "-File", setupScript, "-Target", seededRoot],
-		{ stdio: "pipe" },
-	);
+	execFileSync(process.execPath, [setupScript, seededRoot], { stdio: "pipe" });
 });
 
 after(() => {

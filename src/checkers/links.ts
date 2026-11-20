@@ -34,6 +34,7 @@ import type {
 	ClaimFinding,
 	RepoContext,
 } from "../contracts/index.js";
+import { maskFencedCodeBlocks } from "../extractors/fences.js";
 
 const ATX_HEADING_RE = /^#{1,6} +(.*)$/;
 
@@ -61,17 +62,37 @@ export function slugify(heading: string): string {
 /**
  * Extracts ATX heading text (the content after the leading `#` run and
  * space) from a markdown document's raw source, one entry per heading line
- * encountered, in document order.
+ * encountered, in document order. Fenced code blocks are masked first so
+ * shell comments (`# comment`) inside code samples are never mistaken for
+ * H1 headings.
  */
 function extractAtxHeadings(source: string): string[] {
 	const headings: string[] = [];
-	for (const line of source.split("\n")) {
+	const masked = maskFencedCodeBlocks(source);
+	for (const line of masked.split("\n")) {
 		const match = ATX_HEADING_RE.exec(line.trimEnd());
 		if (match?.[1] !== undefined) {
 			headings.push(match[1]);
 		}
 	}
 	return headings;
+}
+
+/**
+ * Produces the GitHub-flavored-markdown anchor set for a document's headings,
+ * including `-1`, `-2`, ... disambiguation suffixes when identical heading
+ * slugs repeat within the same document.
+ */
+function buildAnchorSet(source: string): Set<string> {
+	const counts = new Map<string, number>();
+	const anchors = new Set<string>();
+	for (const heading of extractAtxHeadings(source)) {
+		const base = slugify(heading);
+		const seen = counts.get(base) ?? 0;
+		counts.set(base, seen + 1);
+		anchors.add(seen === 0 ? base : `${base}-${seen}`);
+	}
+	return anchors;
 }
 
 /** Splits a `link` claim's value on the LAST "#" — see file header. */
@@ -119,6 +140,13 @@ export const linkChecker: Checker = {
 	kind: "link",
 
 	async check(claims: Claim[], ctx: RepoContext): Promise<ClaimFinding[]> {
+		// Cache target file anchor sets per check() batch so N links into the
+		// same document only read and parse it once.
+		const anchorCache = new Map<
+			string,
+			Set<string> | "missing" | "unreadable"
+		>();
+
 		return claims.map((claim) => {
 			const { targetPath, anchor } = splitTargetAndAnchor(claim.value);
 			const abs = path.join(ctx.root, targetPath);
@@ -127,14 +155,25 @@ export const linkChecker: Checker = {
 				return { claim, status: "broken", detail: "path_escapes_repo_root" };
 			}
 
-			if (!existsSync(abs)) {
-				return { claim, status: "broken", detail: "link_target_missing" };
+			let cached = anchorCache.get(abs);
+			if (cached === undefined) {
+				if (!existsSync(abs)) {
+					cached = "missing";
+				} else {
+					try {
+						const source = readFileSync(abs, "utf8");
+						cached = buildAnchorSet(source);
+					} catch {
+						cached = "unreadable";
+					}
+				}
+				anchorCache.set(abs, cached);
 			}
 
-			let source: string;
-			try {
-				source = readFileSync(abs, "utf8");
-			} catch {
+			if (cached === "missing") {
+				return { claim, status: "broken", detail: "link_target_missing" };
+			}
+			if (cached === "unreadable") {
 				return {
 					claim,
 					status: "unverifiable",
@@ -143,8 +182,7 @@ export const linkChecker: Checker = {
 			}
 
 			const anchorLower = decodeAnchor(anchor).toLowerCase();
-			const slugs = extractAtxHeadings(source).map(slugify);
-			if (slugs.some((slug) => slug === anchorLower)) {
+			if (cached.has(anchorLower)) {
 				return { claim, status: "ok", detail: `anchor_exists:${anchor}` };
 			}
 

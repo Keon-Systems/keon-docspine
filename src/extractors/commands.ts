@@ -21,12 +21,18 @@
  */
 import type { Claim, Extractor, ParsedDoc } from "../contracts/index.js";
 
-/** A line that is only a fence delimiter: ``` optionally followed by an info string. */
-const FENCE_LINE_RE = /^```\s*([^\s`]*)\s*$/;
+/** A line that is only a fence delimiter: 3+ backticks or tildes, optionally indented (e.g. under a list item). */
+const FENCE_OPEN_RE = /^\s*(`{3,}|~{3,})\s*([^\s`]*)\s*$/;
 /** Shell-language info strings (or blank) that put a fence in scope for this extractor. */
 const SHELL_INFO_STRINGS = new Set(["", "bash", "sh", "shell", "console"]);
+/** Optional leading shell prompt (`$ `) before a command inside a fenced block. */
+const SHELL_PROMPT_RE = /^\$\s+/;
 const NPM_RUN_RE = /^npm run (\S+)/;
-const NPM_TEST_RE = /^npm test$/;
+const NPM_TEST_RE = /^npm test(?:\s+--(?:\s+.*)?)?$/;
+const NPM_START_RE = /^npm start(?:\s+--(?:\s+.*)?)?$/;
+const PNPM_RUN_RE = /^pnpm run (\S+)/;
+const YARN_RUN_RE = /^yarn run (\S+)/;
+const BUN_RUN_RE = /^bun run (\S+)/;
 
 export const commandExtractor: Extractor = {
 	id: "extract-commands",
@@ -36,43 +42,64 @@ export const commandExtractor: Extractor = {
 		const claims: Claim[] = [];
 		const lines = doc.body.split("\n");
 
-		let inFence = false;
+		let fenceChar: "`" | "~" | null = null;
+		let fenceLen = 0;
 		let fenceIsShell = false;
 
 		for (let i = 0; i < lines.length; i++) {
-			const line = lines[i] ?? "";
+			const rawLine = lines[i] ?? "";
+			const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
 			// Relative to doc.body; the pipeline adds the frontmatter offset
 			// (see paths.ts's reference implementation of this convention)
 			// before a claim leaves the pipeline.
 			const lineNo = i + 1;
 
-			const fenceMatch = line.match(FENCE_LINE_RE);
-			if (fenceMatch) {
-				if (!inFence) {
-					inFence = true;
-					const info = (fenceMatch[1] ?? "").toLowerCase();
+			if (fenceChar === null) {
+				const fenceMatch = line.match(FENCE_OPEN_RE);
+				if (fenceMatch?.[1]) {
+					const marker = fenceMatch[1];
+					const info = (fenceMatch[2] ?? "").toLowerCase();
+					fenceChar = marker[0] as "`" | "~";
+					fenceLen = marker.length;
 					fenceIsShell = SHELL_INFO_STRINGS.has(info);
-				} else {
-					inFence = false;
-					fenceIsShell = false;
+					continue;
 				}
 				continue;
 			}
 
-			if (!inFence || !fenceIsShell) continue;
+			const trimmedLine = line.trim();
+			if (
+				trimmedLine.startsWith(fenceChar.repeat(fenceLen)) &&
+				trimmedLine.slice(fenceLen).replaceAll(fenceChar, "").trim() === ""
+			) {
+				fenceChar = null;
+				fenceLen = 0;
+				fenceIsShell = false;
+				continue;
+			}
 
-			const trimmed = line.trim();
+			if (!fenceIsShell) continue;
+
+			const trimmed = trimmedLine;
 			if (!trimmed) continue; // empty line, skip
 			if (trimmed.startsWith("#")) continue; // shell comment, skip
 
-			const npmRunMatch = trimmed.match(NPM_RUN_RE);
+			const normalized = trimmed.replace(SHELL_PROMPT_RE, "");
+			const scriptRunMatch =
+				normalized.match(NPM_RUN_RE) ??
+				normalized.match(PNPM_RUN_RE) ??
+				normalized.match(YARN_RUN_RE) ??
+				normalized.match(BUN_RUN_RE);
+
 			let value: string;
-			if (npmRunMatch?.[1]) {
-				value = npmRunMatch[1];
-			} else if (NPM_TEST_RE.test(trimmed)) {
+			if (scriptRunMatch?.[1]) {
+				value = scriptRunMatch[1];
+			} else if (NPM_TEST_RE.test(normalized)) {
 				value = "test";
+			} else if (NPM_START_RE.test(normalized)) {
+				value = "start";
 			} else {
-				value = trimmed;
+				value = normalized;
 			}
 
 			claims.push({

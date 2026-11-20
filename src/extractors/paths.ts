@@ -22,8 +22,8 @@
  */
 import path from "node:path";
 import type { Claim, Extractor, ParsedDoc } from "../contracts/index.js";
+import { maskFencedCodeBlocks } from "./fences.js";
 
-const FENCE_RE = /```[\s\S]*?```/g;
 const INLINE_CODE_RE = /`([^`\n]+)`/g;
 const MD_LINK_RE = /\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 const URL_RE = /[a-z][a-z0-9+.-]*:\/\/[^\s)]+/gi;
@@ -59,7 +59,12 @@ function normalizeCandidate(candidateRaw: string): string | null {
 	if (t.startsWith("mailto:")) return null;
 	if (!t.includes("/")) return null;
 	const lastSegment = t.slice(t.lastIndexOf("/") + 1);
-	if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9]+$/.test(lastSegment)) return null;
+	// Allows dotfiles (.github/workflows/ci.yml) and multi-dot filenames
+	// (foo.test.ts, report.schema.json, types.d.ts) while still requiring a
+	// real filename.ext shape so prose ratios like "v1/v2" are rejected.
+	if (!/^\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+$/.test(lastSegment)) {
+		return null;
+	}
 	return toRepoRelativePosix(t);
 }
 
@@ -94,9 +99,7 @@ export const pathExtractor: Extractor = {
 
 		// Mask fenced code blocks to same-length whitespace (preserves line
 		// structure) before scanning — see file header for why.
-		const maskedBody = doc.body.replace(FENCE_RE, (m) =>
-			m.replace(/[^\n]/g, " "),
-		);
+		const maskedBody = maskFencedCodeBlocks(doc.body);
 		const lines = maskedBody.split("\n");
 
 		for (let i = 0; i < lines.length; i++) {

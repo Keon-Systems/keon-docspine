@@ -152,6 +152,17 @@ test("fixture defect #4: billing.md's `npm run build:prod` fence line", () => {
 	assert.equal(claims[0]?.docId, "docs/canon/billing.md");
 });
 
+test("strips leading '$ ' prompt and recognizes pnpm/yarn/bun run and npm start", () => {
+	const doc = makeDoc(
+		"~~~bash\n$ npm run verify\npnpm run build\nyarn run lint\nbun run test\nnpm start\nnpm test -- --watch\n~~~\n",
+	);
+	const claims = commandExtractor.extract(doc);
+	assert.deepEqual(
+		claims.map((c) => c.value),
+		["verify", "build", "lint", "test", "start", "test"],
+	);
+});
+
 test("fixture defect #13 control negative: all-claim-kinds-valid.md's `npm run test` fence line", () => {
 	const doc = makeDoc(
 		"# Every Claim Kind, All Valid\n" +

@@ -16,6 +16,7 @@ C:\Repos\docspine.w2-cli-wiring
 - `w2-manifest-compile` (merged) — `compileManifest`, `checkManifestUpToDate`
 - `w2-drift-engine` (merged) — `computeDrift`
 - `w2-pipeline-audit` (merged) — full `audit` pipeline incl. scoring and coverage gaps
+- `w2-config-load` (merged) — `loadConfig`, mapped to each module's narrow typed options
 - W1 exit — `runVerify`, `registry`, report canonicalize/hash
 
 ## Allowed Files
@@ -39,7 +40,7 @@ C:\Repos\docspine.w2-cli-wiring
 - No provider/LLM invocation from any command in v1. `audit` runs T0 only and stamps `analysisDepth` accordingly.
 
 ## Out of Scope
-`drift --apply` (writing status back — explicitly not in v1). Config-file loading (`w3-config-validation`) — commands accept flags and defaults only. Watch mode, pre-commit hooks, the GitHub App, `docaudit packet <task>` (post-v1, design spec §24).
+`drift --apply` (writing status back — explicitly not in v1). Rich `--explain` config diagnostics (`w3-config-validation`). Watch mode, pre-commit hooks, the GitHub App, `docaudit packet <task>` (post-v1, design spec §24).
 
 ## Existing Patterns To Follow
 - `scripts/spike-verify.ts` — the existing human summary format (repo / sha / docs / claims / status counts / report path). Keep it; `verify` should feel like the spike, promoted.

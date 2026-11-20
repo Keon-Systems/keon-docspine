@@ -150,6 +150,19 @@ test("percent-encoded anchor decodes before matching, 'caf%C3%A9' matches headin
 
 // --- target path escaping the repo root ---
 
+test("shell comment inside fenced code block is NOT treated as an H1 heading", async () => {
+	const findings = await linkChecker.check(
+		[
+			claim(
+				"docs/canon/billing.md#this-is-not-a-heading",
+				"docs/canon/billing.md",
+			),
+		],
+		ctx(),
+	);
+	assert.equal(findings[0]?.status, "broken");
+});
+
 test("target path escaping the repo root via ../ -> broken, never read off the host filesystem", async () => {
 	const findings = await linkChecker.check(
 		[claim("../../../../etc/passwd#anything")],

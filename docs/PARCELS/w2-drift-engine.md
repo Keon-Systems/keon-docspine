@@ -14,7 +14,7 @@ C:\Repos\docspine.w2-drift-engine
 
 ## Dependencies
 - W1 complete (merged) — `src/git/plumbing.ts` provides `diffSinceSha`/`findRename`/`classifyChange`
-- w2-config-load (merged) — for `driftDefaults` tolerance tiers
+- None in W2 Batch A — accepts narrow typed options (no config file reads; `w2-cli-wiring` maps `DocSpineConfig` → options)
 
 ## Allowed Files
 - src/drift/compute.ts
@@ -56,7 +56,11 @@ export interface DocDrift {
   recommendedStatus: DocStatus | null;   // null = no transition warranted
   reason: string;                        // human-readable, cited to counts
 }
-export function computeDrift(repoRoot: string, docs: ParsedDoc[], cfg: DocSpineConfig, git: GitFacts): Promise<DocDrift[]>;
+export interface DriftOptions {
+  driftDefaults?: Partial<Record<DocKind, DriftTolerance>>;
+  contractPaths?: string[];
+}
+export function computeDrift(repoRoot: string, docs: ParsedDoc[], opts: DriftOptions, git: GitFacts): Promise<DocDrift[]>;
 export function applyDrift(repoRoot: string, drifts: DocDrift[]): Promise<{ updated: string[]; skipped: string[] }>;
 ```
 Locked decisions:
@@ -65,7 +69,7 @@ Locked decisions:
    - **Contract-level** → immediate `stale`, regardless of tolerance: a `covers_apis` symbol added/removed/re-signatured, or a change to a file the doc names in `covers_apis`. Detect via the existing `SymbolIndex` at both SHAs where feasible; if the old SHA cannot be indexed, set `contractLevelChange: false` and say so in `reason` — never guess.
    - **Material** → increments `materialCommits`.
    - **Cosmetic** (formatting, comment-only, pure rename) → ignored entirely, per `classifyChange`.
-3. **Tolerance thresholds** — `strict`: any material change → `stale`. `normal`: ≥10 material commits OR ≥30% of covered files touched. `loose`: ≥30 material commits AND ≥50% of covered files touched. Per-doc frontmatter `drift_tolerance` wins; absent, fall back to `config.driftDefaults[kind]`.
+3. **Tolerance thresholds** — `strict`: any material change → `stale`. `normal`: ≥10 material commits OR ≥30% of covered files touched. `loose`: ≥30 material commits AND ≥50% of covered files touched. Per-doc frontmatter `drift_tolerance` wins; absent, fall back to `opts.driftDefaults?.[kind]` (then built-in defaults).
 4. **`last_verified_sha: null` (never verified) is NOT drift.** Such a doc is `draft`, not `stale` — `recommendedStatus: null`. Conflating "unverified" with "went stale" would misreport a fresh repo as rotten.
 5. **Unreachable SHA** (history rewritten, shallow clone) → `recommendedStatus: null`, `reason` states the SHA is unreachable. Degrade loudly, never fabricate a drift count.
 6. **`applyDrift` only ever moves `verified` → `stale`.** It never promotes, never sets `verified`, never writes `last_verified_sha`. Promotion is T3 (deterministic checks + human approval). This restriction is the parcel's most important line.

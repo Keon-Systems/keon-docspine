@@ -128,7 +128,8 @@ function escapeRegex(s: string): string {
 
 /**
  * Scans non-TS/JS source files once and returns which of `targets` appear
- * in them via a word-boundary text match. Short-circuits when all are found.
+ * in them via a word-boundary text match. Precompiles one RegExp per target
+ * before walking files and short-circuits once all targets are found.
  */
 function findForeignSymbols(
 	targets: string[],
@@ -138,6 +139,11 @@ function findForeignSymbols(
 	const found = new Set<string>();
 	if (targets.length === 0) return found;
 
+	const matchers = targets.map((sym) => ({
+		sym,
+		re: new RegExp(`(?<![A-Za-z0-9_$])${escapeRegex(sym)}(?![A-Za-z0-9_$])`),
+	}));
+
 	const files = listForeignSourceFiles(root, isGitRepo);
 	for (const relPath of files) {
 		let content: string;
@@ -146,12 +152,9 @@ function findForeignSymbols(
 		} catch {
 			continue;
 		}
-		for (const sym of targets) {
-			if (!found.has(sym)) {
-				const re = new RegExp(
-					`(?<![A-Za-z0-9_$])${escapeRegex(sym)}(?![A-Za-z0-9_$])`,
-				);
-				if (re.test(content)) found.add(sym);
+		for (const { sym, re } of matchers) {
+			if (!found.has(sym) && re.test(content)) {
+				found.add(sym);
 			}
 		}
 		if (found.size === targets.length) break;

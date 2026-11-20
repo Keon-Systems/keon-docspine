@@ -33,6 +33,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, test } from "node:test";
 import {
+	buildRenameMap,
 	classifyChange,
 	type DiffEntry,
 	diffSinceSha,
@@ -117,6 +118,7 @@ test("diffSinceSha: reports added/modified/deleted/renamed across the range", ()
 	const renamed = findEntry(entries, "new-name.txt");
 	assert.equal(renamed?.status, "renamed");
 	assert.equal(renamed?.renamedFrom, "old-name.txt");
+	assert.equal(renamed?.renameSimilarity, 100);
 
 	const added = findEntry(entries, "new-file.txt");
 	assert.equal(added?.status, "added");
@@ -234,5 +236,66 @@ test("classifyChange: not-a-git-repo never throws, falls back to material", () =
 		assert.equal(classifyChange(nonRepo, entry, []), "material");
 	} finally {
 		rmSync(nonRepo, { recursive: true, force: true });
+	}
+});
+
+test("buildRenameMap: follows multi-hop rename chains (A -> B -> C)", () => {
+	const chainRepo = path.join(
+		os.tmpdir(),
+		`ds-git-plumbing-chain-${randomBytes(4).toString("hex")}`,
+	);
+	mkdirSync(chainRepo, { recursive: true });
+	try {
+		git(["init", "-q", "-b", "main"], chainRepo);
+		git(["config", "user.email", "plumbing-test@docspine.invalid"], chainRepo);
+		git(["config", "user.name", "DocSpine Plumbing Test"], chainRepo);
+
+		writeFileSync(path.join(chainRepo, "a.txt"), "payload\n", "utf8");
+		git(["add", "-A"], chainRepo);
+		git(["commit", "-q", "-m", "add a"], chainRepo);
+
+		git(["mv", "a.txt", "b.txt"], chainRepo);
+		git(["commit", "-q", "-m", "a -> b"], chainRepo);
+
+		git(["mv", "b.txt", "c.txt"], chainRepo);
+		git(["commit", "-q", "-m", "b -> c"], chainRepo);
+
+		const map = buildRenameMap(chainRepo);
+		assert.equal(map.get("a.txt"), "c.txt");
+		assert.equal(map.get("b.txt"), "c.txt");
+		assert.equal(findRename(chainRepo, "a.txt"), "c.txt");
+	} finally {
+		rmSync(chainRepo, { recursive: true, force: true });
+	}
+});
+
+test("classifyChange with sinceSha: detects material change even when followed by a whitespace-only commit", () => {
+	const rangeRepo = path.join(
+		os.tmpdir(),
+		`ds-git-plumbing-range-${randomBytes(4).toString("hex")}`,
+	);
+	mkdirSync(rangeRepo, { recursive: true });
+	try {
+		git(["init", "-q", "-b", "main"], rangeRepo);
+		git(["config", "user.email", "plumbing-test@docspine.invalid"], rangeRepo);
+		git(["config", "user.name", "DocSpine Plumbing Test"], rangeRepo);
+
+		writeFileSync(path.join(rangeRepo, "file.txt"), "v1\n", "utf8");
+		git(["add", "-A"], rangeRepo);
+		git(["commit", "-q", "-m", "base"], rangeRepo);
+		const since = git(["rev-parse", "HEAD"], rangeRepo);
+
+		writeFileSync(path.join(rangeRepo, "file.txt"), "v2\n", "utf8");
+		git(["add", "-A"], rangeRepo);
+		git(["commit", "-q", "-m", "material edit"], rangeRepo);
+
+		writeFileSync(path.join(rangeRepo, "file.txt"), "v2   \n", "utf8");
+		git(["add", "-A"], rangeRepo);
+		git(["commit", "-q", "-m", "trailing whitespace"], rangeRepo);
+
+		const entry: DiffEntry = { path: "file.txt", status: "modified" };
+		assert.equal(classifyChange(rangeRepo, entry, [], since), "material");
+	} finally {
+		rmSync(rangeRepo, { recursive: true, force: true });
 	}
 });

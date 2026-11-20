@@ -30,6 +30,7 @@ import type {
 	RepoContext,
 	SymbolIndex,
 } from "../contracts/index.js";
+import { canonicalizeReport } from "../report/canonicalize.js";
 import { parseDoc } from "./parse-doc.js";
 import { walkDocs } from "./walk.js";
 
@@ -131,13 +132,20 @@ export async function runVerify(
 		}
 		const { doc, bodyLineOffset } = parseDoc(relPath, raw);
 
+		// Guard against duplicate frontmatter `id` across two files: fall back
+		// to `relPath` if another doc already claimed `doc.id` so we never
+		// silently overwrite the earlier doc's claims.
+		const effectiveDocId = claimsByDoc.has(doc.id) ? relPath : doc.id;
+		const effectiveDoc =
+			effectiveDocId === doc.id ? doc : { ...doc, id: effectiveDocId };
+
 		const claims: Claim[] = [];
 		for (const extractor of registry.extractors) {
-			for (const claim of extractor.extract(doc)) {
+			for (const claim of extractor.extract(effectiveDoc)) {
 				claims.push({ ...claim, line: claim.line + bodyLineOffset });
 			}
 		}
-		claimsByDoc.set(doc.id, claims);
+		claimsByDoc.set(effectiveDocId, claims);
 	}
 
 	const allClaims = [...claimsByDoc.values()].flat();
@@ -165,41 +173,37 @@ export async function runVerify(
 		);
 		claimFindings.sort((a, b) => a.claim.line - b.claim.line);
 
-		const total = claimFindings.length;
-		// Per contracts/report.ts's DocScore.brokenClaimRatio doc comment, this
-		// is deliberately "not ok" (broken + moved + unverifiable), not "broken"
-		// alone — an intentional contract choice, not an oversight.
-		const brokenCount = claimFindings.filter((f) => f.status !== "ok").length;
+		// Per contracts/report.ts (amendment ca-009): exclude "unverifiable"
+		// from both numerator and denominator so missing indexers/checkers do
+		// not masquerade as doc rot.
+		const verifiable = claimFindings.filter((f) => f.status !== "unverifiable");
+		const brokenOrMovedCount = verifiable.filter(
+			(f) => f.status === "broken" || f.status === "moved",
+		).length;
 
 		docFindings.push({
 			docId,
 			claimFindings,
 			score: {
-				brokenClaimRatio: total === 0 ? 0 : brokenCount / total,
-				// TODO(w1-git-plumbing / w1-report-writer): real churn needs the
-				// diff-since-sha git-plumbing helpers, out of this spike's scope.
+				brokenClaimRatio:
+					verifiable.length === 0 ? 0 : brokenOrMovedCount / verifiable.length,
+				// TODO(w2-pipeline-audit): real churn needs diff-since-sha over
+				// each doc's `covers` globs.
 				coveredCodeChurn: 0,
-				// TODO(w1-report-writer): needs a real doc-age-vs-code-churn
-				// signal; not computed by this spike.
+				// TODO(w2-pipeline-audit): real doc-age-vs-code-age signal.
 				docAgeVsCodeAge: 0,
 			},
 		});
 	}
-	docFindings.sort((a, b) =>
-		a.docId < b.docId ? -1 : a.docId > b.docId ? 1 : 0,
-	);
 
-	const report: AuditReport = {
+	const report = canonicalizeReport({
 		generatedAtSha: git.headSha ?? "no-git-repo",
 		toolVersion: TOOL_VERSION,
-		// TODO(w1-report-writer): real depth-ladder labels (design spec §20/§26)
-		// land with the provider layer; this spike only ever runs T0 path
-		// checks, so a fixed label is accurate for now.
-		analysisDepth: "path-only-spike",
+		analysisDepth: "t0-only",
 		docFindings,
 		gaps: [],
 		contradictions: [],
-	};
+	});
 
 	const validate = getReportValidator();
 	if (!validate(report)) {

@@ -4,7 +4,7 @@
 Add `.docaudit/config.yaml` loading — schema, typed loader, defaults, actionable errors — so `manifest-compile`, `pipeline-audit`, `drift-engine`, and the provider layer all read one validated config shape instead of each inventing its own.
 
 ## Wave
-W2 (first parcel; four downstream parcels depend on it)
+W2 (Batch C — serialized before `w2-cli-wiring`; ca-007 Option A approved)
 
 ## Branch
 feat/w2-config-load
@@ -15,11 +15,8 @@ C:\Repos\docspine.w2-config-load
 ## Dependencies
 - W1 complete (merged)
 
-## COORDINATOR DECISION REQUIRED BEFORE DISPATCH
-The design spec (§25) specifies **YAML** config. The locked dependency set has no YAML parser. Options:
-- **(A, recommended)** File amendment **ca-007**: add `js-yaml` + `@types/js-yaml` as explicit deps. It is already in the tree transitively via `gray-matter`, so net install cost is ~zero, and it keeps us aligned with the design spec and with what buyers expect a config file to look like.
-- **(B)** v1 config is JSON (`config.json`), zero new deps, diverges from spec §25.
-Do not let the agent choose. Coordinator picks; spec is written assuming **(A)**.
+## COORDINATOR DECISION (RESOLVED — ca-007 Option A)
+Approved **Option A**: add `js-yaml` + `@types/js-yaml` as explicit deps (already present transitively via `gray-matter`, ~zero net install cost; aligns with design spec §25 `.docaudit/config.yaml`).
 
 ## Allowed Files
 - src/config/schema.ts

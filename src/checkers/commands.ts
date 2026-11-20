@@ -24,12 +24,12 @@ import type {
 	RepoContext,
 } from "../contracts/index.js";
 
-// Leading whitespace tolerated: the sibling extractor (w1-extract-commands)
-// derives Claim.value from the *trimmed* line but preserves the *untrimmed*
-// line in Claim.raw, so an indented command inside a fenced block (e.g.
-// nested under a markdown list item) must still match here.
-const NPM_RUN_RE = /^\s*npm run (\S+)/;
-const NPM_TEST_RE = /^\s*npm test\s*$/;
+// Leading whitespace and optional `$ ` prompt tolerated: the sibling extractor
+// (w1-extract-commands) derives Claim.value from the trimmed line (minus any
+// leading `$ ` prompt) while preserving the raw line in Claim.raw.
+const SCRIPT_RUN_RE = /^\s*(?:\$\s+)?(?:npm|pnpm|yarn|bun) run (\S+)/;
+const NPM_TEST_RE = /^\s*(?:\$\s+)?npm test(?:\s+--(?:\s+.*)?)?\s*$/;
+const NPM_START_RE = /^\s*(?:\$\s+)?npm start(?:\s+--(?:\s+.*)?)?\s*$/;
 
 /**
  * Reads and parses `<root>/package.json`'s `scripts` object. Returns `null`
@@ -90,7 +90,7 @@ export const commandChecker: Checker = {
 				};
 			}
 
-			const runMatch = NPM_RUN_RE.exec(claim.raw);
+			const runMatch = SCRIPT_RUN_RE.exec(claim.raw);
 			if (runMatch?.[1]) {
 				return checkScript(claim, scripts, runMatch[1]);
 			}
@@ -99,11 +99,15 @@ export const commandChecker: Checker = {
 				return checkScript(claim, scripts, "test");
 			}
 
+			if (NPM_START_RE.test(claim.raw)) {
+				return checkScript(claim, scripts, "start");
+			}
+
 			return {
 				claim,
 				status: "unverifiable",
 				detail:
-					"unverifiable_command_shape: only npm run <script> and npm test forms are checked in v1",
+					"unverifiable_command_shape: only npm/pnpm/yarn/bun run <script>, npm test, and npm start forms are checked in v1",
 			};
 		});
 	},

@@ -141,3 +141,30 @@ test("extracts multiple distinct path claims from one doc, one per matched span"
 		["src/payments/processor.ts", "src/payments/refund-handler.ts"].sort(),
 	);
 });
+
+test("extracts multi-dot and dotfile paths (e.g. .test.ts, .schema.json, .github/workflows/ci.yml)", () => {
+	const doc = makeDoc(
+		"See `tests/extractors/paths.test.ts`, `schemas/report.schema.json`, and `.github/workflows/ci.yml`.\n",
+	);
+	const claims = pathExtractor.extract(doc);
+	assert.deepEqual(
+		claims.map((c) => c.value),
+		[
+			"tests/extractors/paths.test.ts",
+			"schemas/report.schema.json",
+			".github/workflows/ci.yml",
+		],
+	);
+});
+
+test("masks 4-backtick and tilde fences without leaking inner paths", () => {
+	const doc = makeDoc(
+		"````md\n```bash\ncat src/hidden/file.ts\n```\n````\n" +
+			"~~~bash\ncat src/also-hidden/file.ts\n~~~\n" +
+			"Real path: `src/visible/file.ts`\n",
+	);
+	const claims = pathExtractor.extract(doc);
+	assert.equal(claims.length, 1);
+	assert.equal(claims[0]?.value, "src/visible/file.ts");
+	assert.equal(claims[0]?.line, 9);
+});

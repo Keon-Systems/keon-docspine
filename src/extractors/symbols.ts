@@ -23,8 +23,8 @@
  * (that's `w1-extract-commands`'s territory).
  */
 import type { Claim, Extractor, ParsedDoc } from "../contracts/index.js";
+import { maskFencedCodeBlocks } from "./fences.js";
 
-const FENCE_RE = /```[\s\S]*?```/g;
 const INLINE_CODE_RE = /`([^`\n]+)`/g;
 
 /**
@@ -38,20 +38,56 @@ const SYMBOL_RE =
 	/^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*(?:\(\))?$/;
 
 /**
+ * Common file extensions that appear in root-level filenames without a `/`
+ * (e.g. `AGENTS.md`, `package.json`, `tsconfig.json`, `biome.json`,
+ * `manifest.json.routes`). Without this guard, dotted filenames match
+ * `SYMBOL_RE` and flood real repos with false `symbol_not_found` findings.
+ */
+const FILENAME_EXT_RE =
+	/\.(?:md|json|ya?ml|toml|ts|tsx|js|jsx|mjs|cjs|py|sh|ps1|txt|lock|env|ini|cfg|conf|css|scss|html|xml|svg|png|jpg|jpeg|gif|webp|sql|graphql|proto|dockerfile)(?:\.|$)/i;
+
+/**
+ * Structural signal that a single (non-dotted, non-call) identifier is a code
+ * symbol rather than a prose word, CLI subcommand, package name, or schema
+ * enum value (e.g. `draft`, `stale`, `main`, `ajv`, `biome`, `audit`, `PATH`).
+ * Matches:
+ *   - camelCase (`getInvoicePdf`, `runVerify`, `brokenClaimRatio`)
+ *   - PascalCase (`AuditReport`, `SymbolIndex`, `ClaimFinding`)
+ *   - snake_case (`format_report`, `last_verified_sha`, `detect_duplicates`)
+ *   - `$`-prefixed identifiers (`$schema`)
+ *
+ * Excludes bare all-lowercase words (`draft`, `biome`, `audit`, `tsc`) and
+ * bare ALL_CAPS words without underscores (`PATH`, `HEAD`, `JSON`, `YAML`,
+ * `CLI`, `PR`, `SHA`) which overwhelmingly denote env vars or acronyms in docs.
+ */
+const SINGLE_IDENT_CODE_SHAPE_RE =
+	/(?:[a-z][A-Z]|^[A-Z][a-zA-Z0-9]*[a-z]|_|^\$)/;
+
+/**
  * Normalizes a backtick span's inner text into a symbol claim value, or
  * returns `null` when it doesn't look like a symbol. Per the `Claim.value`
  * normalization rule in `contracts/claims.ts`, symbols get NO path-style
  * normalization: the literal identifier as written, whitespace-trimmed,
  * with only a trailing `()` stripped. See `tests/extractors/symbols.test.ts`
  * for the precision cases this heuristic guards against (path-shaped spans,
- * shell flags, pure numbers, dotted identifiers, call-paren stripping).
+ * root filenames, bare lowercase prose/CLI words, shell flags, pure numbers,
+ * dotted identifiers, call-paren stripping).
  */
 function normalizeCandidate(candidateRaw: string): string | null {
 	const t = candidateRaw.trim();
 	if (!t) return null;
 	if (t.includes("/")) return null; // path-shaped, not a symbol — paths.ts's claim
 	if (!SYMBOL_RE.test(t)) return null;
-	return t.endsWith("()") ? t.slice(0, -2) : t;
+
+	const hasCallParens = t.endsWith("()");
+	const ident = hasCallParens ? t.slice(0, -2) : t;
+
+	if (FILENAME_EXT_RE.test(ident)) return null;
+	if (!hasCallParens && !ident.includes(".")) {
+		if (!SINGLE_IDENT_CODE_SHAPE_RE.test(ident)) return null;
+	}
+
+	return ident;
 }
 
 export const symbolExtractor: Extractor = {
@@ -63,9 +99,7 @@ export const symbolExtractor: Extractor = {
 
 		// Mask fenced code blocks to same-length whitespace (preserves line
 		// structure) before scanning — see file header for why.
-		const maskedBody = doc.body.replace(FENCE_RE, (m) =>
-			m.replace(/[^\n]/g, " "),
-		);
+		const maskedBody = maskFencedCodeBlocks(doc.body);
 		const lines = maskedBody.split("\n");
 
 		for (let i = 0; i < lines.length; i++) {

@@ -130,6 +130,32 @@ test("does not extract a whitespace-only backtick span as a symbol", () => {
 	assert.equal(claims.length, 0);
 });
 
+test("does not extract root filenames, bare lowercase prose/CLI words, or plain ALL_CAPS acronyms as symbols", () => {
+	const doc = makeDoc(
+		"Read `AGENTS.md` and `package.json`, check `manifest.json.routes`, " +
+			"set `PATH`, run `biome`, `tsc`, `audit`, or flip `draft` to `verified`.\n",
+	);
+	const claims = symbolExtractor.extract(doc);
+	assert.equal(claims.length, 0);
+});
+
+test("still extracts camelCase, PascalCase, snake_case, dotted, and call-paren symbols", () => {
+	const doc = makeDoc(
+		"Uses `runVerify`, `AuditReport`, `format_report`, `SessionService.SetAsync`, and `init()`.\n",
+	);
+	const claims = symbolExtractor.extract(doc);
+	assert.deepEqual(
+		claims.map((c) => c.value),
+		[
+			"runVerify",
+			"AuditReport",
+			"format_report",
+			"SessionService.SetAsync",
+			"init",
+		],
+	);
+});
+
 // ---------------------------------------------------------------------------
 // Real fixture docs (fixtures/messy-repo) — EXPECTED-FINDINGS.md defects
 // #3, #12, #13. These prove the extractor alone reproduces the expected

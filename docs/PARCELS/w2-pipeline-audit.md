@@ -14,7 +14,7 @@ C:\Repos\docspine.w2-pipeline-audit
 
 ## Dependencies
 - W1 complete (merged) — all extractors/checkers registered in `src/registry.ts`
-- w2-config-load (merged) — for `ignore` globs
+- None in W2 Batch A — accepts narrow typed options (no config file reads; `w2-cli-wiring` maps `DocSpineConfig` → options)
 
 ## Allowed Files
 - src/pipeline/run-audit.ts
@@ -48,7 +48,11 @@ Contradiction detection, LLM classification, drift (that is `w2-drift-engine`), 
 
 ## Contract
 ```ts
-runAudit(repoRoot: string, opts: { config: DocSpineConfig }): Promise<AuditReport>
+export interface AuditOptions {
+  ignore?: string[];
+  sourceRoots?: string[];
+}
+runAudit(repoRoot: string, opts?: AuditOptions): Promise<AuditReport>
 ```
 Locked decisions:
 1. **`DocScore` semantics** (all three fields already typed in `src/contracts/report.ts`):
@@ -58,7 +62,7 @@ Locked decisions:
 2. **Coverage gap targets** — enumerate deterministically, no heuristic guessing: top-level directories of `src/` (and any configured source roots), `bin` entries in `package.json`, `.github/workflows/*`, migration directories, and test roots. A target with zero `covers` glob intersection across all docs is a `CoverageGap`.
 3. **`fanIn`** = count of repo files importing/referencing the target (static text match on import specifiers is sufficient for v1; do not build a real dep graph). `churn` = commits touching the target.
 4. **`analysisDepth`** must be set honestly — `"t0-only"` for this parcel. It exists so a quiet report can never be mistaken for a clean one.
-5. Inventory honors `config.ignore` globs via `picomatch` and respects `.gitignore` via `git ls-files` when the repo is a git repo (same rule the spike's walk already uses).
+5. Inventory honors `opts.ignore` globs via `picomatch` and respects `.gitignore` via `git ls-files` when the repo is a git repo (same rule the spike's walk already uses).
 6. **Unreadable or malformed docs never abort the run.** They appear in the report as findings. There is already a regression test for this (`tests/pipeline/run-verify-unreadable-doc.test.ts`) — do not weaken it.
 
 ## Required Tests

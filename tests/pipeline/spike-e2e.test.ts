@@ -25,7 +25,7 @@ import { registry } from "../../src/registry.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const setupScript = path.resolve(
 	__dirname,
-	"../../fixtures/messy-repo/setup-fixture-git.ps1",
+	"../../fixtures/messy-repo/setup-fixture-git.mjs",
 );
 const schemasDir = path.resolve(__dirname, "../../schemas");
 
@@ -37,11 +37,7 @@ before(async () => {
 		os.tmpdir(),
 		`ds-spike-e2e-${randomBytes(4).toString("hex")}`,
 	);
-	execFileSync(
-		"pwsh",
-		["-NoLogo", "-NoProfile", "-File", setupScript, "-Target", seededRoot],
-		{ stdio: "pipe" },
-	);
+	execFileSync(process.execPath, [setupScript, seededRoot], { stdio: "pipe" });
 	report = await runVerify(seededRoot, registry);
 });
 
@@ -102,12 +98,20 @@ test("defect #6: ok path claim in session-ttl-notes-b (src/session/session-store
 
 // --- Defect #12: docs/canon/metrics.md, path row, ok, path_exists ---------
 
-test("defect #12: ok path claim in metrics-overview (src-py/report_utils.py)", () => {
-	const finding = findingsFor("metrics-overview").find(
+test("defect #12: ok path claim in metrics-overview (src-py/report_utils.py) and brokenClaimRatio excludes unverifiable", () => {
+	const doc = report.docFindings.find((d) => d.docId === "metrics-overview");
+	assert.ok(doc, "expected docFinding for metrics-overview");
+	const finding = doc.claimFindings.find(
 		(f) => f.claim.value === "src-py/report_utils.py",
 	);
 	assert.ok(finding, "expected a path claim for src-py/report_utils.py");
 	assert.equal(finding?.status, "ok");
+	const pySym = doc.claimFindings.find(
+		(f) => f.claim.value === "format_report",
+	);
+	assert.equal(pySym?.status, "unverifiable");
+	// Amendment ca-009: unverifiable claims are excluded from brokenClaimRatio.
+	assert.equal(doc.score.brokenClaimRatio, 0);
 });
 
 // --- Defect #13: control negative, all-claim-kinds-valid.md's path row ---

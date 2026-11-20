@@ -35,8 +35,8 @@
  */
 import path from "node:path";
 import type { Claim, Extractor, ParsedDoc } from "../contracts/index.js";
+import { maskFencedCodeBlocks } from "./fences.js";
 
-const FENCE_RE = /```[\s\S]*?```/g;
 const MD_LINK_RE = /\[[^\]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 function toRepoRelativePosix(p: string): string {
@@ -89,9 +89,7 @@ export const linkExtractor: Extractor = {
 		// structure) before scanning — mirrors paths.ts, so a markdown link
 		// quoted inside a fenced code sample is never extracted as a real
 		// link claim.
-		const maskedBody = doc.body.replace(FENCE_RE, (m) =>
-			m.replace(/[^\n]/g, " "),
-		);
+		const maskedBody = maskFencedCodeBlocks(doc.body);
 		const lines = maskedBody.split("\n");
 
 		for (let i = 0; i < lines.length; i++) {
