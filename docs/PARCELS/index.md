@@ -157,6 +157,13 @@ Post-W1 verification (2026-08-06, commit 1414dab): `npm ci` from clean tree →
 | ca-008 | Environment + install-path hardening (no contract change) | all parcels | merged (1414dab) | `NODE_ENV=production` made npm silently omit devDependencies, producing installs that reported success but could not build, lint, or test. Now blocked by a zero-dep `preinstall` guard (`scripts/check-env.mjs`; escape hatch `DOCSPINE_ALLOW_PROD_INSTALL=1`), verified against four cases including cmd's trailing-space `set X=production &&` variant. Node ≥22 machine-enforced via `engine-strict=true` (ca-002's human convention made mechanical). Lockfile regenerated — it was missing every platform-optional dep, so `npm ci` failed on a fresh clone. `fast-uri` 3.1.3→3.1.5 clears a high-severity advisory. **Canonical gate is now `npm run verify`** (build + lint + test); every W2 spec cites it. |
 | ca-009 | `src/contracts/report.ts` `DocScore.brokenClaimRatio` semantics | `run-verify.ts`, `w2-pipeline-audit` | merged | Reconciled contract JSDoc and `run-verify.ts` with `w2-pipeline-audit`: `brokenClaimRatio` is `(broken + moved) / (ok + broken + moved)`, excluding `unverifiable` from both numerator and denominator so missing language indexers/checkers do not masquerade as doc rot. |
 
+### ca-010 — document diagnostics (owner-authorized prerequisite)
+
+- Contract: `src/contracts/report.ts`, `schemas/report.schema.json`; consumer: `w2-pipeline-audit`.
+- Status: approved by the owner's prerequisite assignment; implementation in this prerequisite PR (not a TASK-01 retry).
+- Adds optional `AuditReport.documentDiagnostics`: `{ path, code, message }[]`, where `path` is a repo-relative POSIX file path without dot segments, `code` is `unreadable_document` or `invalid_frontmatter`, and `message` is actionable. No fabricated claims or scoring of document failures.
+- Migration: existing report JSON remains valid with the field omitted. Canonicalization preserves omission and sorts present entries by `(path, code, message)`. `runVerify` retains its unreadable-document skip behavior; the audit parcel produces diagnostics separately. No other frozen contract is changed.
+
 ## Open Decisions Needed
 
 No blocking open decisions. (ca-007 resolved to Option A: `js-yaml` + `@types/js-yaml`.)

@@ -29,6 +29,20 @@
 			},
 			"required": ["claim", "status"]
 		},
+		"documentDiagnostic": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"path": {
+					"type": "string",
+					"minLength": 1,
+					"pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/\\u0000]+(?:/[^/\\u0000]+)*$"
+				},
+				"code": { "enum": ["unreadable_document", "invalid_frontmatter"] },
+				"message": { "type": "string", "pattern": "\\S" }
+			},
+			"required": ["path", "code", "message"]
+		},
 		"docScore": {
 			"type": "object",
 			"additionalProperties": false,
@@ -114,6 +128,10 @@
 		"docFindings": {
 			"type": "array",
 			"items": { "$ref": "#/$defs/docFinding" }
+		},
+		"documentDiagnostics": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/documentDiagnostic" }
 		},
 		"gaps": { "type": "array", "items": { "$ref": "#/$defs/coverageGap" } },
 		"contradictions": {
