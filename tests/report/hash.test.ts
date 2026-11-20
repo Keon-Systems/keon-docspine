@@ -16,6 +16,32 @@ import type {
 	DocFinding,
 } from "../../src/contracts/index.js";
 import { hashReport } from "../../src/report/hash.js";
+import { stableStringify } from "../../src/report/serialize.js";
+
+test("shared serializer preserves recursive keys and explicit array order", () => {
+	const value = JSON.parse(
+		'{"z":[{"z":1,"a":2},"b","a"],"__proto__":{"z":3,"a":4},"a":null}',
+	);
+	assert.equal(
+		stableStringify(value),
+		'{"__proto__":{"a":4,"z":3},"a":null,"z":[{"a":2,"z":1},"b","a"]}',
+	);
+	assert.deepEqual(JSON.parse(stableStringify(value)), value);
+});
+
+test("report hash remains byte-compatible with pre-extraction implementation", () => {
+	assert.equal(
+		hashReport({
+			generatedAtSha: "abc123",
+			toolVersion: "0.1.0",
+			analysisDepth: "t0-only",
+			docFindings: [],
+			gaps: [],
+			contradictions: [],
+		}),
+		"73ece936d04c16c1b3ce7673e268ac1f72354ec078855be9c6c1af14cfb0b63e",
+	);
+});
 
 function claim(overrides: Partial<Claim> & Pick<Claim, "docId">): Claim {
 	return {
