@@ -23,15 +23,16 @@ const ERROR_CODES = new Set([
 ]);
 
 function normalizedError(error: unknown): ProviderError {
-	if (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		typeof error.code === "string" &&
-		ERROR_CODES.has(error.code)
-	) {
-		// Do not inspect vendor messages or causes, including when logging.
-		return { code: error.code as ProviderError["code"], message: error.code };
+	try {
+		if (typeof error === "object" && error !== null && "code" in error) {
+			const code = error.code;
+			if (typeof code === "string" && ERROR_CODES.has(code)) {
+				// Do not inspect vendor messages or causes, including when logging.
+				return { code: code as ProviderError["code"], message: code };
+			}
+		}
+	} catch {
+		// Adapter errors can carry throwing getters or Proxy traps too.
 	}
 	return { code: "provider_down", message: "unexpected_provider_failure" };
 }

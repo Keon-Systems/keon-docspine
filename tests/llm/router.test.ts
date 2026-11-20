@@ -185,6 +185,35 @@ test("exceptions in health, discovery and diagnostics never escape", async () =>
 	}
 });
 
+test("throwing error accessors and Proxy traps still allow explicit fallback", async () => {
+	for (const error of [
+		Object.defineProperty({}, "code", {
+			get: () => {
+				throw new Error("getter");
+			},
+		}),
+		new Proxy(
+			{},
+			{
+				has: () => {
+					throw new Error("proxy");
+				},
+			},
+		),
+	]) {
+		const { first, second, cfg } = setup();
+		second.error = error;
+		const outcome = await routeTask(
+			buildRegistry(cfg, factories(first, second)),
+			request(),
+		);
+		assert.equal(
+			outcome.kind === "dispatched" && outcome.result.provider,
+			first.id,
+		);
+	}
+});
+
 test("complete pinned capabilities skip discovery and partial pins override it", async () => {
 	const provider = new FakeProvider("local");
 	let registry = buildRegistry(
