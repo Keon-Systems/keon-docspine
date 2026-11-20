@@ -33,6 +33,7 @@ Repo: `C:\Repos\docspine` · Base branch: `main` · Branch prefix: `feat/` · Wo
 | w2-config-load | W2 | **SPEC READY — Batch C** (ca-007 approved: Option A) | C:\Repos\docspine.w2-config-load | feat/w2-config-load | — | serialized |
 | w2-cli-wiring | W2 | **SPEC READY — Batch C** (serialized, last) | C:\Repos\docspine.w2-cli-wiring | feat/w2-cli-wiring | — | serialized |
 | ~~w2-spike-provider-echo~~ | W2 | **KILLED 2026-08-06** — superseded by w2-provider-router (see decision 4) | n/a | n/a | n/a | n/a |
+| follow-up-historical-api-signatures | follow-up | queued — initial v1 reports `covers_apis` signatures UNEVALUATED; needs deterministic historical symbol indexing/signature comparison before API-level drift can be claimed | — | — | — | coordinator |
 | w3-cache-packet-hash | W3 | queued (W2 exit) | — | feat/w3-cache-packet-hash | — | — |
 | w3-budgets | W3 | queued (W2 exit) | — | feat/w3-budgets | — | — |
 | w3-audit-log | W3 | queued (W2 exit) | — | feat/w3-audit-log | — | — |
@@ -163,6 +164,12 @@ Post-W1 verification (2026-08-06, commit 1414dab): `npm ci` from clean tree →
 - Status: approved by the owner's prerequisite assignment; implementation in this prerequisite PR (not a TASK-01 retry).
 - Adds optional `AuditReport.documentDiagnostics`: `{ path, code, message }[]`, where `path` is a repo-relative POSIX file path without dot segments, `code` is `unreadable_document` or `invalid_frontmatter`, and `message` is actionable. No fabricated claims or scoring of document failures.
 - Migration: existing report JSON remains valid with the field omitted. Canonicalization preserves omission and sorts present entries by `(path, code, message)`. `runVerify` retains its unreadable-document skip behavior; the audit parcel produces diagnostics separately. No other frozen contract is changed.
+
+### Drift prerequisite and historical-signatures follow-up
+
+`src/git/path-history.ts` is the reusable path-based prerequisite, not the drift engine: typed unavailable-vs-empty results, per-commit raw NUL-delimited changes, conservative material classification, explicit contract globs, and all-commits/first-parent-diff merge policy. Legacy `src/git/plumbing.ts` behavior remains unchanged. Side edits can count again at merge integration; all whitespace/comment/rename events remain material absent a language-aware proof.
+
+**follow-up-historical-api-signatures** (queued, not an existing TASK status change): add deterministic historical symbol indexing and compare `covers_apis` additions/removals/signatures at baseline and HEAD, including missing/unavailable-history tests. The current `SymbolIndex` only indexes the working tree. Initial v1 uses covered paths plus explicit `contractPaths` globs and reports historical signature comparison as **unevaluated**, never as "no API change". This prerequisite does not implement either engine or the follow-up.
 
 ## Open Decisions Needed
 
