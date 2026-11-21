@@ -6,6 +6,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -16,10 +17,15 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import type { DocFrontmatter } from "../../src/contracts/index.js";
 import { validateFrontmatter } from "../../src/frontmatter/validate.js";
 import {
+	checkManifestUpToDate,
+	writeManifestArtifacts,
+} from "../../src/manifest/artifacts.js";
+import {
 	compileManifest,
 	serializeManifest,
 	trustRulesDigest,
 } from "../../src/manifest/compile.js";
+import { parseDoc } from "../../src/pipeline/parse-doc.js";
 import { walkDocs } from "../../src/pipeline/walk.js";
 import { canonFrontmatterFixture } from "../contracts/fixtures.js";
 
@@ -236,6 +242,17 @@ test("compile/check entrypoint writes only target, is byte stable, detects drift
 	assert.equal(readFileSync(manifestPath, "utf8"), json);
 	assert.equal(readFileSync(indexPath, "utf8"), index);
 	assert.equal(run("--check").status, 0);
+	commit(root);
+	assert.equal(git(root, "status", "--porcelain"), "");
+	assert.notEqual(
+		JSON.parse(json).generated_at_sha,
+		git(root, "rev-parse", "HEAD"),
+	);
+	assert.equal(run("--check").status, 0);
+	doc(root, "one", { status: "stale" });
+	assert.equal(run("--check").status, 1);
+	git(root, "restore", "docs/one.md");
+	assert.equal(run("--check").status, 0);
 	writeFileSync(indexPath, "changed");
 	assert.equal(run("--check").status, 1);
 	assert.equal(readFileSync(indexPath, "utf8"), "changed");
@@ -244,4 +261,75 @@ test("compile/check entrypoint writes only target, is byte stable, detects drift
 	const invalid = run();
 	assert.equal(invalid.status, 1);
 	assert.match(invalid.stderr, /bad.md/);
+});
+
+test("empty docs and language selectors report errors without dropping valid siblings", async (t) => {
+	const root = temp(t);
+	doc(root, "valid");
+	for (const label of ["js", "javascript", "json"]) {
+		const raw = `\uFEFF--- ${label}\r\n{}\r\n---\r\nBody\r\n`;
+		const relative = `docs/${label}.md`;
+		writeFileSync(path.join(root, relative), raw);
+		assert.match(
+			parseDoc(relative, raw).doc.frontmatterErrors.join(),
+			/unlabelled YAML/,
+		);
+	}
+	writeFileSync(path.join(root, "docs/empty.md"), "");
+	commit(root);
+	const result = await compileManifest(root);
+	assert.deepEqual(Object.keys(result.manifest.docs), ["valid"]);
+	assert.match(result.errors.join("\n"), /empty\.md:.*no frontmatter/);
+	for (const label of ["js", "javascript", "json"])
+		assert.ok(
+			result.errors.some(
+				(error) =>
+					error.startsWith(`docs/${label}.md:`) &&
+					error.includes("unlabelled YAML"),
+			),
+		);
+});
+
+test("tracked Markdown links cannot import metadata, even from an otherwise valid document", {
+	skip:
+		process.platform === "win32" && "file symlinks require Windows privileges",
+}, async (t) => {
+	const root = temp(t);
+	const outside = temp(t);
+	doc(root, "valid");
+	doc(outside, "external");
+	symlinkSync(
+		path.join(outside, "docs/external.md"),
+		path.join(root, "docs/link.md"),
+	);
+	symlinkSync(
+		path.join(outside, "missing.md"),
+		path.join(root, "docs/dangling.md"),
+	);
+	commit(root);
+	const result = await compileManifest(root);
+	assert.deepEqual(Object.keys(result.manifest.docs), ["valid"]);
+	assert.match(result.errors.join("\n"), /docs\/link\.md: cannot read/);
+	assert.match(result.errors.join("\n"), /docs\/dangling\.md: cannot read/);
+});
+
+test("artifact operations refuse a symlinked output leaf and directory", {
+	skip:
+		process.platform === "win32" && "file symlinks require Windows privileges",
+}, async (t) => {
+	const root = temp(t);
+	const outside = temp(t);
+	doc(root, "valid");
+	commit(root);
+	const sentinel = path.join(outside, "docs/manifest.json");
+	writeFileSync(sentinel, "outside");
+	assert.equal((await checkManifestUpToDate(root)).upToDate, false);
+	symlinkSync(sentinel, path.join(root, "docs/manifest.json"));
+	await assert.rejects(writeManifestArtifacts(root), /regular file/);
+	await assert.rejects(checkManifestUpToDate(root), /regular file/);
+	assert.equal(readFileSync(sentinel, "utf8"), "outside");
+	rmSync(path.join(root, "docs"), { recursive: true });
+	symlinkSync(path.join(outside, "docs"), path.join(root, "docs"), "dir");
+	await assert.rejects(writeManifestArtifacts(root), /real directories/);
+	assert.equal(readFileSync(sentinel, "utf8"), "outside");
 });

@@ -1,8 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import matter from "gray-matter";
 import picomatch from "picomatch";
 import type {
 	DocFrontmatter,
@@ -13,6 +12,7 @@ import { validateFrontmatter } from "../frontmatter/validate.js";
 import { walkDocs } from "../pipeline/walk.js";
 import { stableStringify } from "../report/serialize.js";
 import { renderIndexMd } from "./index-md.js";
+import { regularFile } from "./paths.js";
 import { estimateTokens } from "./tokens.js";
 
 /** Exact AGENTS.md trust block; parity is tested, not paraphrased. */
@@ -45,9 +45,6 @@ const validateManifest = new Ajv2020({ allErrors: true, strict: true }).compile(
 );
 
 const sortedUnique = (items: string[]): string[] => [...new Set(items)].sort();
-// Public runtime API omitted by gray-matter's bundled declarations.
-const clearMatterCache = (): void =>
-	(matter as typeof matter & { clearCache(): void }).clearCache();
 
 /** Stable bytes for writing or future CLI check mode. Packet arrays remain ordered. */
 export function serializeManifest(manifest: Manifest): string {
@@ -69,6 +66,7 @@ export async function compileManifest(
 	indexMd: string;
 	errors: string[];
 }> {
+	repoRoot = realpathSync(repoRoot);
 	const errors: string[] = [];
 	let sha = "unknown";
 	try {
@@ -107,15 +105,18 @@ export async function compileManifest(
 			continue;
 		let raw: string;
 		try {
-			raw = readFileSync(path.join(repoRoot, docPath), "utf8");
+			raw = readFileSync(regularFile(repoRoot, docPath), "utf8");
 		} catch (error) {
 			errors.push(`${docPath}: cannot read document (${String(error)})`);
 			continue;
 		}
-		// gray-matter's string cache omits non-enumerable `matter` on cache hits;
-		// the shared validator needs that field even on repeated compiles.
-		clearMatterCache();
-		const result = validateFrontmatter(raw, docPath);
+		let result: ReturnType<typeof validateFrontmatter>;
+		try {
+			result = validateFrontmatter(raw, docPath);
+		} catch (error) {
+			errors.push(`${docPath}: cannot validate frontmatter (${String(error)})`);
+			continue;
+		}
 		if (!result.frontmatter) {
 			errors.push(...result.errors.map((error) => `${docPath}: ${error}`));
 			continue;
@@ -134,7 +135,7 @@ export async function compileManifest(
 			kind: fm.kind,
 			status: fm.status,
 			confidence: fm.confidence,
-			tokens_estimate: estimateTokens(matter(raw).content),
+			tokens_estimate: estimateTokens(result.content),
 			tags: sortedUnique(fm.tags),
 			covers: [...(fm.covers ?? [])],
 		};
@@ -230,7 +231,6 @@ export async function compileManifest(
 	manifest.stale_queue.sort();
 	if (!validateManifest(manifest))
 		errors.push(`manifest schema: ${JSON.stringify(validateManifest.errors)}`);
-	clearMatterCache();
 	return {
 		manifest,
 		indexMd: renderIndexMd(manifest),
