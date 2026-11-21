@@ -66,7 +66,7 @@ export function applyDrift(repoRoot: string, drifts: DocDrift[]): Promise<{ upda
 Locked decisions:
 1. **Compute and apply are separate.** `computeDrift` is pure analysis and mutates nothing. `applyDrift` is opt-in (CLI `--write`, default OFF). Reading state must never silently rewrite the repo.
 2. **Initial v1 path-based change classification**, in precedence order:
-   - Intersect each commit's path events with the doc's `covers` globs, checking BOTH endpoints of renames (use POSIX paths and `picomatch` with `dot: true`). Only covered events contribute. Count touched covered path names deterministically (including deleted/old rename paths), not just the net-changed HEAD paths; if the covered-file denominator is ambiguous against historical paths, use the existing stop-and-report rule rather than inventing a percentage policy.
+   - Intersect each commit's path events with the doc's `covers` globs, checking BOTH endpoints of renames (use POSIX paths and `picomatch` with `dot: true`). Only covered events contribute. Count unique covered path names across events, including both covered rename endpoints and deleted names. `coveredFilesTotal` is the size of the union of covered baseline-tree paths (`readPathHistory`'s `baselinePaths`) and those touched names. This preserves deletions, includes additions and transient paths, and always contains the numerator. With an empty union, the touched fraction is zero. Report counts as unevaluated if the inventory is unavailable.
    - **Contract-level** → immediate `stale`, regardless of tolerance: a covered event also matches explicit `opts.contractPaths` globs on either endpoint. Use `classifyPathChange` on covered events. `contractLevelChange: false` means no explicit covered contract-path match, NOT proof of no API change.
    - **Material** → increments `materialCommits` once per commit with at least one covered material/contract-level event (never once per path). Contract-level events also contribute to material counts.
    - **Cosmetic** → no initial-v1 path events are proven cosmetic, so `cosmeticCommits: 0`. Whitespace, comments, and pure renames remain material: indentation, string spaces, Markdown breaks, import paths, and file modes can change behavior. Do not revive the legacy optimistic whitespace heuristic.
@@ -90,7 +90,7 @@ Locked decisions:
 - Invalid, unavailable, non-ancestor, and shallow baselines → `null` + typed explanatory reason with unevaluated counts; distinguish from successful no-change
 - `applyDrift` rewrites only frontmatter, byte-identical body (assert body hash unchanged)
 - `applyDrift` refuses to set `verified` even if a `DocDrift` were hand-crafted to request it
-- Percentage thresholds tested at boundary (29%/30%/31%)
+- Percentage thresholds tested at boundary (29%/30%/31%); test final-covered-file deletion, additions, rename endpoints, and the zero-total case.
 
 ## Acceptance Criteria
 - `npm run verify` green

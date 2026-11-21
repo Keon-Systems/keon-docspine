@@ -4,6 +4,7 @@
  * No shell, patches, source execution, textconv, or external diff drivers.
  */
 import { spawnSync } from "node:child_process";
+import { performance } from "node:perf_hooks";
 import picomatch from "picomatch";
 import type { ChangeKind } from "./plumbing.js";
 
@@ -32,6 +33,7 @@ export type PathHistoryFailure =
 	| "non_ancestor_baseline"
 	| "shallow_history"
 	| "git_unavailable"
+	| "history_limit"
 	| "invalid_output";
 
 export type PathHistoryResult =
@@ -40,6 +42,8 @@ export type PathHistoryResult =
 			baselineSha: string;
 			headSha: string;
 			mergePolicy: "all-commits-first-parent-diff";
+			/** Repo-relative leaf paths in the baseline tree, sorted. */
+			baselinePaths: string[];
 			/** Oldest topological order first, each commit once (including empty commits). */
 			commits: PathHistoryCommit[];
 	  }
@@ -50,28 +54,44 @@ type GitResult =
 	| {
 			ok: false;
 			exitCode: number | null;
-			reason: "git_unavailable" | "invalid_output";
+			reason: "git_unavailable" | "history_limit" | "invalid_output";
 	  };
 
 const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_BUFFER = 64 * 1024 * 1024;
+const MAX_COMMITS = 5_000;
+const TOTAL_MS = 30_000;
+const COMMAND_MS = 5_000;
 
-function git(root: string, args: string[]): GitResult {
+function git(root: string, args: string[], deadline: number): GitResult {
+	const remaining = Math.floor(deadline - performance.now());
+	if (remaining <= 0)
+		return { ok: false, exitCode: null, reason: "history_limit" };
 	try {
 		const result = spawnSync("git", ["--no-replace-objects", ...args], {
 			cwd: root,
 			stdio: ["ignore", "pipe", "pipe"],
 			maxBuffer: MAX_BUFFER,
+			timeout: Math.min(COMMAND_MS, remaining),
+			killSignal: "SIGKILL",
+			env: { ...process.env, GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" },
 			windowsHide: true,
 			shell: false,
 		});
+		const code = (result.error as NodeJS.ErrnoException | undefined)?.code;
+		if (code === "ETIMEDOUT" || code === "ENOBUFS") {
+			return { ok: false, exitCode: null, reason: "history_limit" };
+		}
 		if (result.error || result.status !== 0) {
 			return { ok: false, exitCode: result.status, reason: "git_unavailable" };
 		}
 		try {
 			return {
 				ok: true,
-				output: new TextDecoder("utf-8", { fatal: true }).decode(result.stdout),
+				output: new TextDecoder("utf-8", {
+					fatal: true,
+					ignoreBOM: true,
+				}).decode(result.stdout),
 			};
 		} catch {
 			return { ok: false, exitCode: null, reason: "invalid_output" };
@@ -148,7 +168,9 @@ function parseChanges(output: string): CommitPathChange[] | null {
  * non-ancestors are distinct from successful empty history. Shallow repos are
  * conservatively unavailable, even when the visible range looks complete;
  * fetch full history before retrying. Invalid UTF-8, malformed output, missing
- * objects, buffer exhaustion, or Git failures never return partial success.
+ * objects, or Git failures never return partial success. Local Git commands
+ * have time and buffer limits; the entire scan also limits time, commits,
+ * and aggregate output. Exhaustion is explicitly unevaluated.
  *
  * Merge policy: enumerate ALL commits reachable from HEAD but not baseline,
  * once each, in reverse topological order, without path-history simplification.
@@ -173,7 +195,9 @@ export function readPathHistory(
 			"Use a hexadecimal commit SHA, not a ref or revision expression.",
 		);
 	}
-	const headResult = git(root, ["rev-parse", "--verify", "HEAD^{commit}"]);
+	const deadline = performance.now() + TOTAL_MS;
+	const run = (...args: string[]): GitResult => git(root, args, deadline);
+	const headResult = run("rev-parse", "--verify", "HEAD^{commit}");
 	if (!headResult.ok)
 		return unavailable(
 			headResult.reason,
@@ -185,26 +209,26 @@ export function readPathHistory(
 			"invalid_output",
 			"Git returned an invalid HEAD object ID.",
 		);
-	const baseResult = git(root, [
-		"rev-parse",
-		"--verify",
-		"--end-of-options",
-		`${baseline.toLowerCase()}^{object}`,
-	]);
+	const prefix = baseline.toLowerCase();
+	const baseResult = run("rev-parse", `--disambiguate=${prefix}`);
 	if (!baseResult.ok)
 		return unavailable(
-			baseResult.reason === "invalid_output"
-				? "invalid_output"
-				: "unavailable_baseline",
+			baseResult.reason,
+			"Cannot enumerate baseline objects locally.",
+		);
+	const candidates = baseResult.output.trim().split(/\n/).filter(Boolean);
+	const baselineSha = candidates[0];
+	if (candidates.length !== 1 || !baselineSha)
+		return unavailable(
+			"unavailable_baseline",
 			"Baseline object is unavailable or ambiguous; fetch its history and retry with a full commit SHA.",
 		);
-	const baselineSha = baseResult.output.trim();
-	if (!FULL_OID.test(baselineSha))
+	if (!FULL_OID.test(baselineSha) || !baselineSha.startsWith(prefix))
 		return unavailable(
 			"invalid_output",
 			"Git returned an invalid baseline object ID.",
 		);
-	const type = git(root, ["cat-file", "-t", baselineSha]);
+	const type = run("cat-file", "-t", baselineSha);
 	if (!type.ok)
 		return unavailable(
 			type.reason,
@@ -215,7 +239,7 @@ export function readPathHistory(
 			"invalid_baseline",
 			"Baseline must identify a commit, not a tree, blob, or tag.",
 		);
-	const shallow = git(root, ["rev-parse", "--is-shallow-repository"]);
+	const shallow = run("rev-parse", "--is-shallow-repository");
 	if (!shallow.ok)
 		return unavailable(
 			shallow.reason,
@@ -231,12 +255,7 @@ export function readPathHistory(
 			"invalid_output",
 			"Git returned an invalid shallow-history marker.",
 		);
-	const ancestor = git(root, [
-		"merge-base",
-		"--is-ancestor",
-		baselineSha,
-		headSha,
-	]);
+	const ancestor = run("merge-base", "--is-ancestor", baselineSha, headSha);
 	if (!ancestor.ok) {
 		return ancestor.exitCode === 1
 			? unavailable(
@@ -248,22 +267,56 @@ export function readPathHistory(
 					"Cannot establish baseline ancestry; history is unevaluated.",
 				);
 	}
-	const log = git(root, [
+	const tree = run(
+		"ls-tree",
+		"--full-tree",
+		"-r",
+		"-z",
+		"--name-only",
+		baselineSha,
+	);
+	if (!tree.ok)
+		return unavailable(
+			tree.reason,
+			"Cannot enumerate the baseline's committed paths.",
+		);
+	const baselinePaths = tree.output.split("\0");
+	if (baselinePaths.pop() !== "" || baselinePaths.some((p) => !p)) {
+		return unavailable(
+			"invalid_output",
+			"Git returned malformed baseline paths.",
+		);
+	}
+	baselinePaths.sort();
+	const log = run(
 		"rev-list",
 		"--reverse",
 		"--topo-order",
 		"--parents",
+		`--max-count=${MAX_COMMITS + 1}`,
 		`${baselineSha}..${headSha}`,
 		"--",
-	]);
+	);
 	if (!log.ok)
 		return unavailable(
 			log.reason,
 			"Cannot enumerate committed history; no partial drift counts are available.",
 		);
+	const lines = log.output.split("\n").filter(Boolean);
+	if (lines.length > MAX_COMMITS)
+		return unavailable(
+			"history_limit",
+			"History contains more than 5,000 commits; no partial counts are available.",
+		);
+	let remainingBytes =
+		MAX_BUFFER - Buffer.byteLength(tree.output) - Buffer.byteLength(log.output);
+	if (remainingBytes < 0)
+		return unavailable(
+			"history_limit",
+			"Committed path history exceeds the aggregate output limit.",
+		);
 	const commits: PathHistoryCommit[] = [];
-	for (const line of log.output.split("\n")) {
-		if (line === "") continue;
+	for (const line of lines) {
 		const [sha, ...parents] = line.split(" ");
 		if (
 			!sha ||
@@ -274,7 +327,7 @@ export function readPathHistory(
 				"invalid_output",
 				"Git returned malformed commit ancestry.",
 			);
-		const diff = git(root, [
+		const diff = run(
 			"diff-tree",
 			"-r",
 			"--root",
@@ -289,11 +342,17 @@ export function readPathHistory(
 			"--ignore-submodules=none",
 			...(parents[0] ? [parents[0], sha] : [sha]),
 			"--",
-		]);
+		);
 		if (!diff.ok)
 			return unavailable(
 				diff.reason,
 				"Cannot read a commit's path changes; no partial drift counts are available.",
+			);
+		remainingBytes -= Buffer.byteLength(diff.output);
+		if (remainingBytes < 0)
+			return unavailable(
+				"history_limit",
+				"Committed path history exceeds the aggregate output limit.",
 			);
 		const changes = parseChanges(diff.output);
 		if (changes === null)
@@ -308,6 +367,7 @@ export function readPathHistory(
 		baselineSha,
 		headSha,
 		mergePolicy: "all-commits-first-parent-diff",
+		baselinePaths,
 		commits,
 	};
 }

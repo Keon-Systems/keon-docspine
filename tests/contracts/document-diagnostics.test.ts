@@ -27,6 +27,7 @@ test("ca-010: old reports, empty diagnostics, and both diagnostic codes validate
 		undefined,
 		[],
 		[diagnostic],
+		[{ ...diagnostic, path: "docs/line\nname.md" }],
 		[
 			{
 				path: "docs/é space.md",
@@ -60,6 +61,8 @@ test("ca-010: diagnostics reject unsafe/noncanonical paths", () => {
 		"..",
 		"docs/..",
 		"docs/a\0.md",
+		"docs/line\n/../a.md",
+		"docs/line\r/a\\b.md",
 	]) {
 		assert.equal(
 			validate({
