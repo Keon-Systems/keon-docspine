@@ -13,10 +13,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ErrorObject } from "ajv";
 import { Ajv2020 } from "ajv/dist/2020.js";
-import matter from "gray-matter";
 import type { DocFrontmatter } from "../contracts/index.js";
+import { parseYamlFrontmatter } from "./parse-yaml.js";
 
 export interface FrontmatterValidationResult {
+	/** The body suffix on a successful parse, otherwise the original text. */
+	content: string;
 	/** Parsed YAML frontmatter data, present whenever a frontmatter block existed and parsed as YAML — regardless of whether it then passed schema validation. `null` only when no frontmatter block was found, or the block failed to parse as YAML at all. */
 	data: Record<string, unknown> | null;
 	/** Schema-valid `DocFrontmatter`, present if and only if `errors` is empty. */
@@ -141,8 +143,7 @@ function formatAjvErrors(
  * `last_verified_at: 2026-06-01`) from native `Date` objects back into the
  * ISO-8601 date strings the schema (and `DocFrontmatter`) expect.
  *
- * js-yaml's default schema (which `gray-matter` uses, matching
- * `src/pipeline/parse-doc.ts`'s own plain `matter(raw)` call) implements
+ * js-yaml's safe schema (which gray-matter's YAML engine uses) implements
  * YAML core-schema timestamp resolution: an unquoted date-only scalar like
  * `2026-06-01` parses as a JS `Date`, not a string -- even though every
  * date-shaped `DocFrontmatter` field (`last_verified_at`, `expires`) is
@@ -174,12 +175,13 @@ export function validateFrontmatter(
 	rawDocText: string,
 	docPath: string,
 ): FrontmatterValidationResult {
-	let parsed: ReturnType<typeof matter>;
+	let parsed: ReturnType<typeof parseYamlFrontmatter>;
 	try {
-		parsed = matter(rawDocText);
+		parsed = parseYamlFrontmatter(rawDocText);
 	} catch (err) {
 		const reason = err instanceof Error ? err.message : String(err);
 		return {
+			content: rawDocText,
 			data: null,
 			frontmatter: null,
 			errors: [
@@ -188,9 +190,9 @@ export function validateFrontmatter(
 		};
 	}
 
-	const hasFrontmatterBlock = parsed.matter.length > 0;
-	if (!hasFrontmatterBlock) {
+	if (!parsed.hasFrontmatter) {
 		return {
+			content: parsed.content,
 			data: null,
 			frontmatter: null,
 			errors: [`${docPath}: no frontmatter block found`],
@@ -204,6 +206,7 @@ export function validateFrontmatter(
 
 	if (valid) {
 		return {
+			content: parsed.content,
 			data,
 			frontmatter: data as unknown as DocFrontmatter,
 			errors: [],
@@ -211,6 +214,7 @@ export function validateFrontmatter(
 	}
 
 	return {
+		content: parsed.content,
 		data,
 		frontmatter: null,
 		errors: formatAjvErrors(validateSchema.errors ?? [], data),

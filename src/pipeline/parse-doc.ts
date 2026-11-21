@@ -7,8 +7,8 @@
  * rule against `schemas/frontmatter.schema.json`) is `w1-frontmatter-validate`'s
  * job, not this spike's — see `docs/PARCELS/index.md`.
  */
-import matter from "gray-matter";
 import type { DocFrontmatter, ParsedDoc } from "../contracts/index.js";
+import { parseYamlFrontmatter } from "../frontmatter/parse-yaml.js";
 
 export interface ParseDocResult {
 	doc: ParsedDoc;
@@ -50,9 +50,9 @@ export function parseDoc(relPath: string, raw: string): ParseDocResult {
 	const frontmatterErrors: string[] = [];
 
 	try {
-		const parsed = matter(raw);
-		hasFrontmatterBlock = parsed.matter.length > 0;
-		data = (parsed.data ?? {}) as Record<string, unknown>;
+		const parsed = parseYamlFrontmatter(raw);
+		hasFrontmatterBlock = parsed.hasFrontmatter;
+		data = parsed.data;
 		content = parsed.content;
 	} catch (err) {
 		frontmatterErrors.push(

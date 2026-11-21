@@ -51,7 +51,7 @@ Drift status (consumed if already present in frontmatter, never computed here), 
 
 ## Existing Patterns To Follow
 - `src/frontmatter/validate.ts` — the source of validated `DocFrontmatter`
-- `src/report/canonicalize.ts` — **reuse this for manifest serialization.** One canonicalizer, not two. Stable key ordering and stable array sorting are already solved; do not hand-roll `JSON.stringify` ordering.
+- `src/report/serialize.ts` — use the shared stable JSON serializer. Manifest-specific ordering stays in the compiler, not in the report canonicalizer.
 - `docs/design/llm-native-docs-system.md` §5.2 (manifest example), §3.2, §7.1
 - `npm run verify` is the gate
 
@@ -75,7 +75,7 @@ Locked decisions:
 3. **`tokensEstimate` is a deterministic approximation, not a real tokenizer**: `ceil(chars / 4)`. Document the ±20% error in the function's JSDoc. It exists for context *budgeting*, not billing — and adding a tokenizer dep for a budgeting hint fails the dependency-policy test.
 4. **`kind: history` and `kind: scratch` are excluded from `routes` and from all `contextPackets`**, unconditionally, regardless of config. If a config packet names a history/scratch doc, that is an `errors[]` entry, not an honored request. The config cannot override the taxonomy's load-bearing fence.
 5. **`generatedAtSha` = current HEAD.** If not a git repo, use `"unknown"` and add an `errors[]` note — agents check this field's distance from HEAD to downgrade trust (design spec §11.5), so it must never be fabricated.
-6. **Byte-stable output.** Same inputs at same SHA → identical bytes. No timestamps anywhere inside the manifest body. This is what makes "manifest matches fresh compile" a viable CI check.
+6. **Byte-stable output.** Same inputs at same SHA → identical bytes. No timestamps anywhere inside the manifest body. The read-only `checkManifestUpToDate` in `src/manifest/artifacts.ts` compares both artifacts byte-for-byte against fresh output rendered with the stored generation SHA. The stored SHA must be HEAD or a provable ancestor, so committing the outputs does not by itself invalidate them; its distance from HEAD still informs agent trust. Changed manifest inputs that change the output still fail the check.
 7. **`conflicts` is populated only from doc-declared contradictions** (e.g. two docs both claiming canon for the same subsystem+topic, or a `superseded_by` cycle). LLM-detected contradictions are T1 and arrive later via a different path.
 8. `INDEX.md` is a rendered *view* of the manifest — generated from the same in-memory `Manifest`, never independently computed, so the two cannot disagree.
 

@@ -1,38 +1,32 @@
 /** Temporary provider-free entrypoint; future CLI maps config to typed options. */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { compileManifest, serializeManifest } from "../src/manifest/compile.js";
+import {
+	checkManifestUpToDate,
+	writeManifestArtifacts,
+} from "../src/manifest/artifacts.js";
 
 async function main(): Promise<void> {
 	const args = process.argv.slice(2);
 	const check = args.includes("--check");
 	const positional = args.filter((arg) => arg !== "--check");
-	if (positional.length !== 1 || positional[0]?.startsWith("--")) {
+	const root = positional[0];
+	if (positional.length !== 1 || !root || root.startsWith("--")) {
 		console.error("Usage: npx tsx scripts/compile.ts <repo-root> [--check]");
 		process.exitCode = 1;
 		return;
 	}
-	const root = path.resolve(positional[0] as string);
-	const result = await compileManifest(root);
-	for (const error of result.errors) console.error(error);
-	let differs = false;
-	const outputs = {
-		"manifest.json": serializeManifest(result.manifest),
-		"INDEX.md": result.indexMd,
-	};
-	if (!check) mkdirSync(path.join(root, "docs"), { recursive: true });
-	for (const [name, content] of Object.entries(outputs)) {
-		const target = path.join(root, "docs", name);
-		if (check) {
-			try {
-				if (readFileSync(target, "utf8") === content) continue;
-			} catch {}
-			console.error(`${target}: missing or differs from fresh compile`);
-			differs = true;
-		} else writeFileSync(target, content, "utf8");
+	if (check) {
+		const result = await checkManifestUpToDate(root);
+		for (const error of result.errors) console.error(error);
+		if (!result.upToDate) {
+			console.error("Manifest or INDEX missing or differs from fresh compile");
+			process.exitCode = 1;
+		}
+	} else {
+		const result = await writeManifestArtifacts(root);
+		for (const error of result.errors) console.error(error);
+		// Emit useful partial inventory on metadata errors, but never report success.
+		if (result.errors.length) process.exitCode = 1;
 	}
-	// Emit useful partial inventory on metadata errors, but never report success.
-	if (differs || result.errors.length) process.exitCode = 1;
 }
 
 main().catch((error: unknown) => {
