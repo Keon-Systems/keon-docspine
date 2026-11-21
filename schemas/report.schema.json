@@ -36,7 +36,7 @@
 				"path": {
 					"type": "string",
 					"minLength": 1,
-					"pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/\\u0000]+(?:/[^/\\u0000]+)*$"
+					"pattern": "^(?!/)(?![A-Za-z]:)(?![\\s\\S]*\\\\)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))[^/\\u0000]+(?:/[^/\\u0000]+)*$"
 				},
 				"code": { "enum": ["unreadable_document", "invalid_frontmatter"] },
 				"message": { "type": "string", "pattern": "\\S" }

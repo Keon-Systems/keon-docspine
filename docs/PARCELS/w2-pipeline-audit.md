@@ -59,7 +59,7 @@ Locked decisions:
 1. **`DocScore` semantics** (all three fields already typed in `src/contracts/report.ts`):
    - `brokenClaimRatio` = `(broken + moved) / totalClaims`; `unverifiable` is EXCLUDED from both numerator and denominator (we cannot fault a doc for a claim we lack the ability to check — counting it would let a missing Python indexer masquerade as doc rot). `0` when `totalClaims === 0`.
    - `coveredCodeChurn` = commit count touching any `covers` glob since the doc's last git-touch commit. `0` when the doc has no `covers` or the repo is not a git repo.
-   - `docAgeVsCodeAge` = ratio of (days since doc last-touch) to (days since newest covered-path commit); `0` when undeterminable. Never `Infinity`/`NaN` — clamp and document.
+   - `docAgeVsCodeAge` = (newest covered-path commit timestamp − doc last-touch commit timestamp) in fractional days (committer timestamps). Positive means code was touched more recently; zero or negative means the doc kept pace. Use `0` when undeterminable. Never use wall-clock time or emit `Infinity`/`NaN`.
 2. **Coverage gap targets** — enumerate deterministically, no heuristic guessing: top-level directories of `src/` (and any configured source roots), `bin` entries in `package.json`, `.github/workflows/*`, migration directories, and test roots. A target with zero `covers` glob intersection across all docs is a `CoverageGap`.
 3. **`fanIn`** = count of repo files importing/referencing the target (static text match on import specifiers is sufficient for v1; do not build a real dep graph). `churn` = commits touching the target.
 4. **`analysisDepth`** must be set honestly — `"t0-only"` for this parcel. It exists so a quiet report can never be mistaken for a clean one.
@@ -67,7 +67,7 @@ Locked decisions:
 6. **Unreadable or malformed docs never abort the run.** `runAudit` emits `documentDiagnostics` with the repo-relative POSIX `path`, stable `code` (`unreadable_document` or `invalid_frontmatter`), and an actionable, deterministic `message`. These are NOT claim findings: never fabricate a `Claim`, `docId`, line, or score to represent a document failure, and never include diagnostics in `brokenClaimRatio` or other scores. Keep the existing `runVerify` tracked-but-unreadable skip behavior (no `DocFinding`) and its regression test (`tests/pipeline/run-verify-unreadable-doc.test.ts`) unchanged. Malformed but readable docs may still yield genuine extracted claims under the existing parser fallback; report validation failures separately. Omit diagnostics when absent or emit `[]`; canonicalization preserves absence and sorts present entries by `(path, code, message)`.
 
 ## Required Tests
-- Full audit against a temp fixture copy: every `EXPECTED-FINDINGS.md` row reproduced across all four claim kinds, with expected statuses
+- Full audit against a seeded temp fixture copy: assert T0 oracle rows #1–5 and #9–13, including all four claim kinds, coverage, and document diagnostics. Defer the T1 contradiction/classification signals in #6–8; do not synthesize them.
 - **Zero findings on both control negatives** (defects #10, #13) — precision, not just recall
 - Coverage gap detects the fixture's undocumented subsystem (defect #9) and does NOT flag documented ones
 - `brokenClaimRatio` excludes `unverifiable`: a doc whose only defect is the Python symbol claim (#12) scores `0`, not a penalty

@@ -75,6 +75,7 @@ test("path history preserves material-then-whitespace and net-reverted events; l
 			[material, whitespace],
 		);
 		assert.equal(result.baselineSha, base);
+		assert.deepEqual(result.baselinePaths, ["reverted.txt", "source.py"]);
 		assert.equal(result.headSha, whitespace);
 		for (const commit of result.commits) {
 			assert.deepEqual(
@@ -118,6 +119,9 @@ test("history distinguishes no changes, empty commits, invalid/missing/non-ances
 		for (const invalid of ["", "HEAD", "--all", `${base}^`, "not-a-sha"])
 			failure(readPathHistory(f.root, invalid), "invalid_baseline");
 		failure(readPathHistory(f.root, "f".repeat(40)), "unavailable_baseline");
+		const tagOnly = "deadbeef01234567";
+		f.git(["tag", tagOnly, base]);
+		failure(readPathHistory(f.root, tagOnly), "unavailable_baseline");
 		failure(
 			readPathHistory(f.root, f.git(["rev-parse", "HEAD^{tree}"])),
 			"invalid_baseline",
